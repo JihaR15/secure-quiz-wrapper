@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,40 +13,76 @@ import {
   Link01Icon,
   CheckmarkCircle01Icon,
   Shield01Icon,
+  Menu01Icon,
+  Cancel01Icon,
 } from "hugeicons-react";
 
 export default function LandingPage() {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-neutral-950 text-neutral-100">
       {/* Navigation Header */}
       <header className="w-full border-b border-neutral-900/80 bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-950 flex items-center justify-center font-bold">
-              <Shield01Icon className="w-5 h-5 stroke-[2]" />
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-950 flex items-center justify-center font-bold shrink-0">
+              <Shield01Icon className="w-5 h-5 stroke-[2] shrink-0" />
             </div>
-            <span className="font-sans font-semibold text-lg tracking-tight">
+            <span className="font-sans font-semibold text-lg tracking-tight truncate">
               Secure Quiz Wrapper
             </span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-3">
             <Link href="/admin">
-              <Button variant="outline" size="sm" className="px-3 sm:px-4 text-xs sm:text-sm">
+              <Button variant="outline" size="sm">
                 <Shield01Icon className="w-4 h-4 text-neutral-400" />
-                <span className="hidden sm:inline">Admin Console</span>
-                <span className="inline sm:hidden">Admin</span>
+                Admin Console
               </Button>
             </Link>
             <Link href="/admin">
-              <Button variant="primary" size="sm" className="px-3 sm:px-4 text-xs sm:text-sm">
+              <Button variant="primary" size="sm">
                 <Link01Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">Create Quiz Link</span>
-                <span className="inline sm:hidden">Buat Link</span>
+                Create Quiz Link
               </Button>
             </Link>
           </div>
+
+          {/* Mobile Hamburger Button */}
+          <div className="flex md:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+              className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white"
+              aria-label="Toggle Navigation Menu"
+            >
+              {isMobileMenuOpen ? (
+                <Cancel01Icon className="w-6 h-6" />
+              ) : (
+                <Menu01Icon className="w-6 h-6" />
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Hamburger Drawer Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-b border-neutral-800 bg-neutral-950/95 p-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
+            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="outline" size="md" className="w-full justify-start">
+                <Shield01Icon className="w-4 h-4 text-neutral-400" />
+                Admin Console
+              </Button>
+            </Link>
+            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+              <Button variant="primary" size="md" className="w-full justify-start">
+                <Link01Icon className="w-4 h-4" />
+                Create Quiz Link
+              </Button>
+            </Link>
+          </div>
+        )}
       </header>
 
       {/* Main Hero & Bento Section */}
@@ -70,10 +109,7 @@ export default function LandingPage() {
                 <ArrowRight01Icon className="w-5 h-5" />
               </Button>
             </Link>
-            <a
-              href="#bento-grid"
-              className="w-full sm:w-auto"
-            >
+            <a href="#bento-grid" className="w-full sm:w-auto">
               <Button variant="outline" size="lg" className="w-full sm:w-auto">
                 Explore Features
               </Button>
@@ -86,7 +122,7 @@ export default function LandingPage() {
           {/* Card 1: Tab-Switch Prevention (Large 2-column card) */}
           <Card hoverEffect className="md:col-span-2 flex flex-col justify-between space-y-8 bg-gradient-to-br from-neutral-900/80 via-neutral-900/40 to-neutral-950">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100">
+              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
                 <ViewOffIcon className="w-6 h-6 stroke-[1.5]" />
               </div>
               <h2 className="font-serif text-2xl md:text-3xl font-medium text-white">
@@ -119,7 +155,7 @@ export default function LandingPage() {
           {/* Card 2: QR Code Distribution */}
           <Card hoverEffect className="flex flex-col justify-between space-y-8 bg-neutral-900/60">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100">
+              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
                 <QrCodeIcon className="w-6 h-6 stroke-[1.5]" />
               </div>
               <h2 className="font-serif text-2xl font-medium text-white">
@@ -141,7 +177,7 @@ export default function LandingPage() {
           {/* Card 3: Clipboard & Context Lock */}
           <Card hoverEffect className="flex flex-col justify-between space-y-6 bg-neutral-900/60">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100">
+              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
                 <Copy01Icon className="w-6 h-6 stroke-[1.5]" />
               </div>
               <h2 className="font-serif text-2xl font-medium text-white">
@@ -168,10 +204,10 @@ export default function LandingPage() {
             </div>
           </Card>
 
-          {/* Card 4: URL Encryption & Seamless Embedding (2-column card) */}
+          {/* Card 4: Safe URL Wrapping */}
           <Card hoverEffect className="md:col-span-2 flex flex-col justify-between space-y-8 bg-neutral-900/60">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100">
+              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
                 <Link01Icon className="w-6 h-6 stroke-[1.5]" />
               </div>
               <h2 className="font-serif text-2xl md:text-3xl font-medium text-white">
@@ -203,7 +239,7 @@ export default function LandingPage() {
       <footer className="w-full border-t border-neutral-900 bg-neutral-950 py-10">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs text-neutral-500">
           <div className="flex items-center gap-2">
-            <Shield01Icon className="w-4 h-4 text-neutral-400" />
+            <Shield01Icon className="w-4 h-4 text-neutral-400 shrink-0" />
             <span>Secure Quiz Wrapper — Controlled Assessment System</span>
           </div>
           <div>All rights reserved. Standard browser enforcement protocols.</div>

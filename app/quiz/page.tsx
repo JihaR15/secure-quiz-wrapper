@@ -9,7 +9,14 @@ import { SecurityBadge } from "@/components/quiz/violation-badge";
 import { NameGateModal } from "@/components/quiz/name-gate-modal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield01Icon, ArrowLeft01Icon, AlertCircleIcon, Globe02Icon } from "hugeicons-react";
+import {
+  Shield01Icon,
+  ArrowLeft01Icon,
+  AlertCircleIcon,
+  Globe02Icon,
+  CheckmarkCircle01Icon,
+  Logout01Icon,
+} from "hugeicons-react";
 import { Language, translations } from "@/lib/i18n";
 
 function QuizContent() {
@@ -24,6 +31,8 @@ function QuizContent() {
   const [isNameGateOpen, setIsNameGateOpen] = useState<boolean>(true);
   const [violationCount, setViolationCount] = useState<number>(0);
   const [showToast, setShowToast] = useState<boolean>(false);
+  const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
@@ -70,9 +79,18 @@ function QuizContent() {
     }
   };
 
+  // Finish exam handler
+  const handleConfirmFinish = () => {
+    if (typeof document !== "undefined" && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    }
+    setShowFinishConfirm(false);
+    setIsCompleted(true);
+  };
+
   // Anti-Cheat Event Listeners for Alt+Tab, App Switching, and Window Loss
   useEffect(() => {
-    if (isNameGateOpen) return;
+    if (isNameGateOpen || isCompleted) return;
 
     const syncViolation = (count: number) => {
       if (submissionId) {
@@ -90,7 +108,6 @@ function QuizContent() {
     const triggerViolation = () => {
       if (isGracePeriodRef.current) return;
 
-      // Debounce duplicate events within 1500ms
       const now = Date.now();
       if (now - lastViolationTimeRef.current < 1500) return;
       lastViolationTimeRef.current = now;
@@ -103,55 +120,45 @@ function QuizContent() {
       setShowToast(true);
     };
 
-    // 1. Tab switch, mobile home button, mobile app switch (visibilitychange)
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState === "hidden") {
         triggerViolation();
       }
     };
 
-    // 2. Mobile app backgrounding / iOS Safari app switch (pagehide)
     const handlePageHide = () => {
       triggerViolation();
     };
 
-    // 3. Alt+Tab / Window focus loss handler
     const handleWindowBlur = () => {
       setTimeout(() => {
-        // If the browser tab or window is hidden -> Alt+Tab or Mobile App switch -> Violation!
         if (document.hidden || document.visibilityState === "hidden") {
           triggerViolation();
           return;
         }
 
-        // If document lost window focus completely (Alt+Tab to another desktop app)
         if (!document.hasFocus()) {
           triggerViolation();
           return;
         }
 
-        // If active element is iframe AND document.hasFocus() is true, user is filling out the form inside browser -> OK
         const active = document.activeElement;
         if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
           return;
         }
 
-        // Otherwise, window lost focus
         triggerViolation();
       }, 150);
     };
 
-    // 4. Prevent context menu
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
 
-    // 5. Prevent copy, cut, paste
     const handleCopyCutPaste = (e: ClipboardEvent) => {
       e.preventDefault();
     };
 
-    // 6. Intercept keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
         e.key === "F12" ||
@@ -181,7 +188,51 @@ function QuizContent() {
       document.removeEventListener("paste", handleCopyCutPaste);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isNameGateOpen, submissionId]);
+  }, [isNameGateOpen, isCompleted, submissionId]);
+
+  // Thank You Screen after completion
+  if (isCompleted) {
+    return (
+      <div className="w-screen h-screen max-w-[100vw] bg-neutral-950 flex items-center justify-center p-6 font-sans">
+        <Card className="max-w-md w-full bg-neutral-900 border-neutral-800 text-center p-8 space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-3xl bg-emerald-950/80 border border-emerald-800/80 flex items-center justify-center text-emerald-400 mx-auto">
+            <CheckmarkCircle01Icon className="w-8 h-8 stroke-[2]" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="font-serif text-2xl font-semibold text-white tracking-tight">
+              {language === "id" ? "Ujian Telah Selesai" : "Assessment Completed"}
+            </h2>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              {language === "id"
+                ? `Terima kasih, ${participantName}. Sesi ujian Anda telah resmi ditutup dan jawaban Anda tersimpan.`
+                : `Thank you, ${participantName}. Your assessment session has been successfully closed.`}
+            </p>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono">
+            <div className="flex justify-between text-neutral-400">
+              <span>{language === "id" ? "Nama Peserta" : "Participant"}:</span>
+              <span className="text-neutral-100 font-bold">{participantName}</span>
+            </div>
+            <div className="flex justify-between text-neutral-400">
+              <span>{language === "id" ? "Total Pelanggaran" : "Violations"}:</span>
+              <span className={violationCount > 0 ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>
+                {violationCount}
+              </span>
+            </div>
+          </div>
+
+          <Link href="/">
+            <Button variant="primary" size="md" className="w-full">
+              <ArrowLeft01Icon className="w-4 h-4" />
+              {language === "id" ? "Kembali ke Halaman Utama" : "Return to Main Page"}
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans">
@@ -192,9 +243,21 @@ function QuizContent() {
         onSubmit={handleNameSubmit}
       />
 
-      {/* Language Switcher & Security Status Floating Badge */}
+      {/* Floating Header Controls: Language, Finish Button & Security Badge */}
       {!isNameGateOpen && (
         <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setShowFinishConfirm(true)}
+            className="shadow-xl font-semibold text-xs py-2 px-3"
+          >
+            <Logout01Icon className="w-4 h-4" />
+            <span className="hidden sm:inline">
+              {language === "id" ? "Selesai Ujian" : "Finish Exam"}
+            </span>
+          </Button>
+
           <button
             onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
             className="p-2 px-3 rounded-2xl bg-neutral-950/90 border border-neutral-800 shadow-xl backdrop-blur-md text-xs font-mono text-neutral-300 hover:text-white transition-colors flex items-center gap-1.5"
@@ -203,6 +266,47 @@ function QuizContent() {
             {language.toUpperCase()}
           </button>
           <SecurityBadge violationCount={violationCount} />
+        </div>
+      )}
+
+      {/* Finish Confirmation Modal */}
+      {showFinishConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/90 backdrop-blur-md animate-in fade-in duration-200">
+          <Card className="max-w-md w-full bg-neutral-900 border-neutral-800 p-6 space-y-5 text-center shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400 mx-auto">
+              <AlertCircleIcon className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-serif text-xl font-semibold text-white">
+                {language === "id" ? "Konfirmasi Selesai Ujian" : "Confirm Finish Assessment"}
+              </h3>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                {language === "id"
+                  ? "Apakah Anda sudah memastikan jawaban formulir terkirim dan ingin mengakhiri sesi ujian ini?"
+                  : "Have you submitted your form answers and wish to exit this session?"}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                size="md"
+                className="w-1/2"
+                onClick={() => setShowFinishConfirm(false)}
+              >
+                {language === "id" ? "Batal" : "Cancel"}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                className="w-1/2 font-semibold"
+                onClick={handleConfirmFinish}
+              >
+                {language === "id" ? "Ya, Selesai" : "Yes, Finish"}
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 

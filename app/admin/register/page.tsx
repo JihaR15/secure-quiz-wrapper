@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield01Icon, Mail01Icon, LockIcon, UserIcon, ArrowRight01Icon } from "hugeicons-react";
+import { Shield01Icon, Mail01Icon, LockIcon, UserIcon, ArrowRight01Icon, ArrowLeft01Icon } from "hugeicons-react";
 
 export default function AdminRegisterPage() {
   const router = useRouter();
@@ -43,10 +43,19 @@ export default function AdminRegisterPage() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex items-center justify-center bg-neutral-950 text-neutral-100 font-sans p-6">
-      <Card className="max-w-md w-full bg-neutral-900/60 border-neutral-800 shadow-2xl p-8 space-y-6">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-neutral-950 text-neutral-100 font-sans p-6">
+      <div className="max-w-md w-full mx-auto">
+        <Link href="/">
+          <Button variant="outline" size="sm" className="mb-6">
+            <ArrowLeft01Icon className="w-4 h-4" />
+            Kembali ke Beranda
+          </Button>
+        </Link>
+      </div>
+
+      <Card className="max-w-md w-full mx-auto bg-neutral-900/60 border-neutral-800 shadow-2xl p-8 space-y-6">
         <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-950 flex items-center justify-center font-bold">
+          <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-950 flex items-center justify-center font-bold shrink-0">
             <Shield01Icon className="w-6 h-6 stroke-[2]" />
           </div>
           <h1 className="font-serif text-2xl font-semibold text-white tracking-tight">
@@ -124,6 +133,8 @@ export default function AdminRegisterPage() {
           </Link>
         </div>
       </Card>
+
+      <div className="py-4" />
     </div>
   );
 }
