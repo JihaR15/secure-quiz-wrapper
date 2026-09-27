@@ -217,10 +217,13 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Extracts first name / nickname for navbar display
+  const adminFirstName = adminName.trim().split(" ")[0] || adminName;
+
   if (loading) {
     return (
       <div className="min-h-screen w-screen bg-slate-50 dark:bg-neutral-950 flex items-center justify-center text-slate-500 dark:text-neutral-400 font-sans text-sm">
-        Memuat Dashboard Admin...
+        {language === "id" ? "Memuat Dashboard Admin..." : "Loading Admin Dashboard..."}
       </div>
     );
   }
@@ -247,15 +250,15 @@ export default function AdminDashboardPage() {
             </Link>
           </div>
 
-          {/* Controls & Logged-In Admin Profile */}
+          {/* Controls & Logged-In Admin Nickname Badge */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Logged-In Admin Name Badge (Visible on Mobile & Desktop) */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300 max-w-[120px] sm:max-w-none truncate">
+            {/* Logged-In Admin Nickname Badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300 max-w-[130px] sm:max-w-none truncate">
               <UserIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span className="truncate font-medium">{adminName}</span>
+              <span className="truncate font-semibold">{adminFirstName}</span>
             </div>
 
-            {/* Theme Toggle Button (Icon on mobile) */}
+            {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
               className="p-2 sm:p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shrink-0"
@@ -268,7 +271,7 @@ export default function AdminDashboardPage() {
               )}
             </button>
 
-            {/* Language Switcher (Icon/Text on mobile) */}
+            {/* Language Switcher */}
             <button
               onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
               className="p-2 sm:px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1 shrink-0"
@@ -278,7 +281,7 @@ export default function AdminDashboardPage() {
               <span className="font-bold hidden sm:inline">{language.toUpperCase()}</span>
             </button>
 
-            {/* Logout Button (Icon on mobile, Text on Desktop) */}
+            {/* Logout Button */}
             <Button
               variant="outline"
               size="sm"
@@ -302,10 +305,10 @@ export default function AdminDashboardPage() {
             {t.adminConsole}
           </div>
           <h1 className="font-serif text-2xl sm:text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
-            Dashboard Pengawas Ujian
+            {t.dashboardTitle}
           </h1>
           <p className="text-slate-600 dark:text-neutral-400 text-xs sm:text-sm max-w-2xl">
-            Kelola kuis terisolasi Anda, lihat riwayat peserta beserta catatan pelanggarannya, hapus data jika diperlukan, dan unduh laporan Excel.
+            {t.dashboardSub}
           </p>
         </div>
 
@@ -335,7 +338,7 @@ export default function AdminDashboardPage() {
             </div>
             <div className="md:col-span-2">
               <Button variant="primary" size="md" className="w-full h-12" disabled={submitting}>
-                {submitting ? "Memproses..." : t.generateQuiz}
+                {submitting ? "..." : t.generateQuiz}
               </Button>
             </div>
           </form>
@@ -354,7 +357,9 @@ export default function AdminDashboardPage() {
 
             {quizzes.length === 0 ? (
               <Card className="text-center p-6 text-xs text-slate-500 dark:text-neutral-500">
-                Belum ada kuis yang dibuat. Gunakan formulir di atas untuk membuat kuis pertama Anda.
+                {language === "id"
+                  ? "Belum ada kuis yang dibuat. Gunakan formulir di atas untuk membuat kuis pertama Anda."
+                  : "No quizzes created yet. Use the form above to create your first quiz."}
               </Card>
             ) : (
               <div className="space-y-3">
@@ -388,16 +393,16 @@ export default function AdminDashboardPage() {
                             handleDeleteQuiz(q.id);
                           }}
                           className="text-slate-400 dark:text-neutral-500 hover:text-red-500 p-1 transition-colors"
-                          title="Hapus Kuis"
+                          title={language === "id" ? "Hapus Kuis" : "Delete Quiz"}
                         >
                           <Delete02Icon className="w-4 h-4" />
                         </button>
                       </div>
 
                       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 font-mono pt-1">
-                        <span>{submissionCount} Peserta</span>
+                        <span>{submissionCount} {language === "id" ? "Peserta" : "Participants"}</span>
                         <span className={totalViolations > 0 ? "text-red-500 font-bold" : "text-slate-500 dark:text-neutral-500"}>
-                          {totalViolations} Pelanggaran
+                          {totalViolations} {language === "id" ? "Pelanggaran" : "Violations"}
                         </span>
                       </div>
                     </div>
@@ -415,7 +420,7 @@ export default function AdminDashboardPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-neutral-800 pb-4">
                     <div>
                       <span className="text-xs uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-                        Kuis Terpilih
+                        {t.selectedQuiz}
                       </span>
                       <h3 className="font-serif text-2xl font-medium text-slate-900 dark:text-white">
                         {selectedQuiz.title}
@@ -438,7 +443,7 @@ export default function AdminDashboardPage() {
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                     <div className="md:col-span-8 space-y-3">
                       <label className="text-xs font-medium text-slate-700 dark:text-neutral-300">
-                        Link Akses Peserta (Dengan Proteksi Anti-Cheat)
+                        {t.quizAccessLink}
                       </label>
                       <p className="font-mono text-xs text-slate-800 dark:text-neutral-200 break-all bg-slate-100 dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 select-all">
                         {getQuizFullUrl(selectedQuiz)}
@@ -452,12 +457,12 @@ export default function AdminDashboardPage() {
                           {copiedId === selectedQuiz.id ? (
                             <>
                               <CheckmarkCircle01Icon className="w-4 h-4 text-emerald-500" />
-                              Link Tersalin
+                              {t.linkCopied}
                             </>
                           ) : (
                             <>
                               <Copy01Icon className="w-4 h-4" />
-                              Salin Link Kuis
+                              {t.copyQuizLink}
                             </>
                           )}
                         </Button>
@@ -467,7 +472,7 @@ export default function AdminDashboardPage() {
                           rel="noopener noreferrer"
                         >
                           <Button variant="outline" size="sm">
-                            Uji Sesi Kuis
+                            {t.testQuizSession}
                             <ArrowRight01Icon className="w-4 h-4" />
                           </Button>
                         </a>
@@ -483,7 +488,7 @@ export default function AdminDashboardPage() {
                         level="H"
                       />
                       <span className="text-[11px] font-mono text-slate-500 dark:text-neutral-500 mt-2">
-                        Scan QR Code
+                        {t.scanQrCode}
                       </span>
                     </div>
                   </div>
@@ -497,7 +502,7 @@ export default function AdminDashboardPage() {
                       {t.participantResults}
                     </h4>
                     <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">
-                      Total: {selectedQuiz.submissions.length} Peserta
+                      Total: {selectedQuiz.submissions.length} {language === "id" ? "Peserta" : "Participants"}
                     </span>
                   </div>
 
@@ -516,7 +521,7 @@ export default function AdminDashboardPage() {
                             <th className="p-3">{t.status}</th>
                             <th className="p-3">{t.startedAt}</th>
                             <th className="p-3">{t.lastActive}</th>
-                            <th className="p-3 pr-4 text-right">Aksi</th>
+                            <th className="p-3 pr-4 text-right">{t.actions}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200/60 dark:divide-neutral-800/60">
@@ -572,7 +577,7 @@ export default function AdminDashboardPage() {
                                   <button
                                     onClick={() => handleDeleteSubmission(sub.id)}
                                     className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                    title="Hapus Data Peserta"
+                                    title={language === "id" ? "Hapus Data Peserta" : "Delete Participant"}
                                   >
                                     <Delete02Icon className="w-4 h-4" />
                                   </button>
@@ -589,7 +594,11 @@ export default function AdminDashboardPage() {
             ) : (
               <Card className="p-12 text-center text-sm text-slate-500 dark:text-neutral-400 space-y-3">
                 <AlertCircleIcon className="w-8 h-8 text-slate-400 dark:text-neutral-500 mx-auto" />
-                <p>Pilih kuis dari daftar di sebelah kiri untuk melihat QR Code dan hasil pelanggaran peserta.</p>
+                <p>
+                  {language === "id"
+                    ? "Pilih kuis dari daftar di sebelah kiri untuk melihat QR Code dan hasil pelanggaran peserta."
+                    : "Select a quiz from the list on the left to view QR Code and participant violation results."}
+                </p>
               </Card>
             )}
           </div>
