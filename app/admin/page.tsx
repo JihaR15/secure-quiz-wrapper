@@ -231,23 +231,34 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans transition-colors duration-300">
       {/* Header Bar */}
       <header className="w-full border-b border-slate-200 dark:border-neutral-900 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-2">
+          {/* Logo & Brand Name */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
                 <Shield01Icon className="w-5 h-5 stroke-[2]" />
               </div>
-              <span className="font-sans font-semibold text-lg tracking-tight">
+              <span className="font-sans font-semibold text-base sm:text-lg tracking-tight hidden sm:inline">
                 Secure Quiz Wrapper
+              </span>
+              <span className="font-sans font-bold text-sm tracking-tight inline sm:hidden text-emerald-600 dark:text-emerald-400">
+                SQW
               </span>
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle Button */}
+          {/* Controls & Logged-In Admin Profile */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Logged-In Admin Name Badge (Visible on Mobile & Desktop) */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300 max-w-[120px] sm:max-w-none truncate">
+              <UserIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span className="truncate font-medium">{adminName}</span>
+            </div>
+
+            {/* Theme Toggle Button (Icon on mobile) */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              className="p-2 sm:p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shrink-0"
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? (
@@ -257,46 +268,50 @@ export default function AdminDashboardPage() {
               )}
             </button>
 
+            {/* Language Switcher (Icon/Text on mobile) */}
             <button
               onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-              className="p-2 px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
+              className="p-2 sm:px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1 shrink-0"
+              title="Switch Language"
             >
               <Globe02Icon className="w-3.5 h-3.5 text-emerald-500" />
-              {language.toUpperCase()}
+              <span className="font-bold hidden sm:inline">{language.toUpperCase()}</span>
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300">
-              <UserIcon className="w-4 h-4 text-emerald-500" />
-              <span>{adminName}</span>
-            </div>
-
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            {/* Logout Button (Icon on mobile, Text on Desktop) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              className="px-2.5 sm:px-4 shrink-0"
+              title={t.logout}
+            >
               <Logout01Icon className="w-4 h-4" />
-              {t.logout}
+              <span className="hidden sm:inline">{t.logout}</span>
             </Button>
           </div>
         </div>
       </header>
 
       {/* Main Admin Section */}
-      <main className="max-w-7xl mx-auto px-6 py-10 space-y-10 w-full flex-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8 sm:space-y-10 w-full flex-1">
         {/* Admin Title Bar */}
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs uppercase tracking-wider font-medium">
             <QrCodeIcon className="w-3.5 h-3.5" />
             {t.adminConsole}
           </div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
+          <h1 className="font-serif text-2xl sm:text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
             Dashboard Pengawas Ujian
           </h1>
-          <p className="text-slate-600 dark:text-neutral-400 text-sm max-w-2xl">
+          <p className="text-slate-600 dark:text-neutral-400 text-xs sm:text-sm max-w-2xl">
             Kelola kuis terisolasi Anda, lihat riwayat peserta beserta catatan pelanggarannya, hapus data jika diperlukan, dan unduh laporan Excel.
           </p>
         </div>
 
         {/* Top Form: Create New Quiz */}
         <Card className="space-y-6">
-          <h2 className="font-serif text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+          <h2 className="font-serif text-lg sm:text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
             <Link01Icon className="w-5 h-5 text-emerald-500" />
             {t.generateQuiz}
           </h2>
@@ -412,7 +427,7 @@ export default function AdminDashboardPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      <Button variant="primary" size="md" className="shrink-0">
+                      <Button variant="primary" size="md" className="shrink-0 w-full sm:w-auto">
                         <Download01Icon className="w-4 h-4" />
                         {t.exportExcel}
                       </Button>
