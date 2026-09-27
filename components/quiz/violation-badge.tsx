@@ -1,41 +1,36 @@
 "use client";
 
-import { Shield01Icon, AlertCircleIcon, LockIcon } from "hugeicons-react";
+import { Badge } from "@/components/ui/badge";
+import { Alert02Icon } from "hugeicons-react";
+import { useLanguage } from "@/components/providers";
 
-interface SecurityBadgeProps {
-  violationCount: number;
-}
+export function SecurityBadge({ violationCount }: { violationCount: number }) {
+  const { t } = useLanguage();
+  const flagged = violationCount > 0;
 
-export function SecurityBadge({ violationCount }: SecurityBadgeProps) {
   return (
-    <div className="fixed top-4 right-4 z-30 flex items-center gap-3 p-2.5 px-4 rounded-2xl bg-neutral-950/90 border border-neutral-800 shadow-xl backdrop-blur-md select-none font-sans text-xs">
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-        </span>
-        <span className="text-neutral-300 font-medium hidden sm:inline">
-          Active Security Mode
-        </span>
-      </div>
-
-      <div className="h-4 w-px bg-neutral-800" />
-
-      <div className="flex items-center gap-1.5 font-mono">
-        <AlertCircleIcon
-          className={`w-4 h-4 ${
-            violationCount > 0 ? "text-red-400" : "text-neutral-400"
+    <Badge
+      variant="outline"
+      className={`h-8 gap-2 rounded-lg border-border bg-background/90 px-2.5 backdrop-blur-md ${
+        flagged ? "text-destructive" : "text-muted-foreground"
+      }`}
+    >
+      <span aria-hidden className="relative flex size-1.5">
+        <span
+          className={`absolute inline-flex size-full animate-ping rounded-full opacity-70 ${
+            flagged ? "bg-destructive" : "bg-primary"
           }`}
         />
-        <span className="text-neutral-400">Violations:</span>
         <span
-          className={`font-bold ${
-            violationCount > 0 ? "text-red-400" : "text-neutral-200"
+          className={`relative inline-flex size-1.5 rounded-full ${
+            flagged ? "bg-destructive" : "bg-primary"
           }`}
-        >
-          {violationCount}
-        </span>
-      </div>
-    </div>
+        />
+      </span>
+      <span className="hidden text-xs font-normal sm:inline">{t.activeSecurity}</span>
+      <span aria-hidden className="hidden h-3.5 w-px bg-border sm:block" />
+      <Alert02Icon className="size-3.5" />
+      <span className="font-mono text-xs tabular-nums">{violationCount}</span>
+    </Badge>
   );
 }

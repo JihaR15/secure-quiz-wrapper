@@ -7,25 +7,34 @@ import { decodeFormUrl } from "@/lib/url";
 import { ViolationToast } from "@/components/quiz/violation-toast";
 import { SecurityBadge } from "@/components/quiz/violation-badge";
 import { NameGateModal } from "@/components/quiz/name-gate-modal";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Shield01Icon,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { LanguageToggle } from "@/components/site/language-toggle";
+import { useLanguage } from "@/components/providers";
+import {
+  Alert02Icon,
   ArrowLeft01Icon,
-  AlertCircleIcon,
-  Globe02Icon,
   CheckmarkCircle01Icon,
-  Logout01Icon,
+  Globe02Icon,
 } from "hugeicons-react";
-import { Language, translations } from "@/lib/i18n";
+
+const VIOLATION_COOLDOWN_MS = 1500;
+const FOCUS_SETTLE_MS = 150;
+const GRACE_PERIOD_MS = 3000;
 
 function QuizContent() {
   const searchParams = useSearchParams();
   const rawFormParam = searchParams.get("form");
   const quizIdParam = searchParams.get("id");
+  const { t, language, setLanguage } = useLanguage();
 
-  const [language, setLanguage] = useState<Language>("id");
-  const [targetUrl, setTargetUrl] = useState<string>("");
   const [participantName, setParticipantName] = useState<string>("");
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [isNameGateOpen, setIsNameGateOpen] = useState<boolean>(true);
@@ -38,28 +47,23 @@ function QuizContent() {
   const lastViolationTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
 
-  const t = translations[language];
+  const targetUrl = React.useMemo(
+    () =>
+      rawFormParam
+        ? decodeFormUrl(rawFormParam)
+        : "https://docs.google.com/forms/d/e/1FAIpQLScf3nF9U3sR_SampleAssessment/viewform?embedded=true",
+    [rawFormParam],
+  );
 
-  useEffect(() => {
-    if (rawFormParam) {
-      const decoded = decodeFormUrl(rawFormParam);
-      setTargetUrl(decoded);
-    } else {
-      const defaultSample = "https://docs.google.com/forms/d/e/1FAIpQLScf3nF9U3sR_SampleAssessment/viewform?embedded=true";
-      setTargetUrl(defaultSample);
-    }
-  }, [rawFormParam]);
-
-  // Handle participant name submission
   const handleNameSubmit = async (name: string) => {
     setParticipantName(name);
     setIsNameGateOpen(false);
 
-    // Initial grace period (3 seconds) to settle focus after starting
+    // Let focus settle after the modal closes before arming detection.
     isGracePeriodRef.current = true;
-    setTimeout(() => {
+    window.setTimeout(() => {
       isGracePeriodRef.current = false;
-    }, 3000);
+    }, GRACE_PERIOD_MS);
 
     try {
       const res = await fetch("/api/submissions", {
@@ -75,11 +79,10 @@ function QuizContent() {
         setSubmissionId(data.submission.id);
       }
     } catch {
-      // Fallback
+      // Non-fatal: the session still runs, it just cannot sync violations.
     }
   };
 
-  // Finish exam handler
   const handleConfirmFinish = () => {
     if (typeof document !== "undefined" && document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
@@ -88,32 +91,27 @@ function QuizContent() {
     setIsCompleted(true);
   };
 
-  // Anti-Cheat Event Listeners for Alt+Tab, App Switching, and Window Loss
   useEffect(() => {
     if (isNameGateOpen || isCompleted) return;
 
     const syncViolation = (count: number) => {
-      if (submissionId) {
-        fetch("/api/submissions", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            submissionId,
-            violationCount: count,
-          }),
-        }).catch(() => {});
-      }
+      if (!submissionId) return;
+      fetch("/api/submissions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId, violationCount: count }),
+      }).catch(() => {});
     };
 
     const triggerViolation = () => {
       if (isGracePeriodRef.current) return;
 
       const now = Date.now();
-      if (now - lastViolationTimeRef.current < 1500) return;
+      if (now - lastViolationTimeRef.current < VIOLATION_COOLDOWN_MS) return;
       lastViolationTimeRef.current = now;
 
-      setViolationCount((prev) => {
-        const next = prev + 1;
+      setViolationCount((previous) => {
+        const next = previous + 1;
         syncViolation(next);
         return next;
       });
@@ -121,235 +119,206 @@ function QuizContent() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.hidden || document.visibilityState === "hidden") {
-        triggerViolation();
-      }
+      if (document.visibilityState === "hidden") triggerViolation();
     };
 
-    const handlePageHide = () => {
-      triggerViolation();
-    };
+    const handlePageHide = () => triggerViolation();
 
     const handleWindowBlur = () => {
-      setTimeout(() => {
-        if (document.hidden || document.visibilityState === "hidden") {
+      window.setTimeout(() => {
+        if (document.visibilityState === "hidden" || !document.hasFocus()) {
           triggerViolation();
           return;
         }
-
-        if (!document.hasFocus()) {
-          triggerViolation();
-          return;
-        }
-
+        // Focus moving into the embedded form is expected, not a violation.
         const active = document.activeElement;
         if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
           return;
         }
-
         triggerViolation();
-      }, 150);
+      }, FOCUS_SETTLE_MS);
     };
 
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-    };
+    const preventContextMenu = (event: MouseEvent) => event.preventDefault();
+    const preventClipboard = (event: ClipboardEvent) => event.preventDefault();
 
-    const handleCopyCutPaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "F12" ||
-        (e.ctrlKey && ["c", "v", "x", "u", "s", "p", "a"].includes(e.key.toLowerCase())) ||
-        (e.metaKey && ["c", "v", "x", "u", "s", "p", "a"].includes(e.key.toLowerCase()))
-      ) {
-        e.preventDefault();
+    const blockedKeys = ["c", "v", "x", "u", "s", "p", "a"];
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "F12") {
+        event.preventDefault();
+        return;
+      }
+      const withModifier = event.ctrlKey || event.metaKey;
+      if (withModifier && blockedKeys.includes(event.key.toLowerCase())) {
+        event.preventDefault();
       }
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("pagehide", handlePageHide);
     window.addEventListener("blur", handleWindowBlur);
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("copy", handleCopyCutPaste);
-    document.addEventListener("cut", handleCopyCutPaste);
-    document.addEventListener("paste", handleCopyCutPaste);
+    document.addEventListener("contextmenu", preventContextMenu);
+    document.addEventListener("copy", preventClipboard);
+    document.addEventListener("cut", preventClipboard);
+    document.addEventListener("paste", preventClipboard);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("blur", handleWindowBlur);
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("copy", handleCopyCutPaste);
-      document.removeEventListener("cut", handleCopyCutPaste);
-      document.removeEventListener("paste", handleCopyCutPaste);
+      document.removeEventListener("contextmenu", preventContextMenu);
+      document.removeEventListener("copy", preventClipboard);
+      document.removeEventListener("cut", preventClipboard);
+      document.removeEventListener("paste", preventClipboard);
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isNameGateOpen, isCompleted, submissionId]);
 
-  // Thank You Screen after completion
+  const locale = language === "id" ? "id-ID" : "en-GB";
+  const startedAtLabel = isCompleted
+    ? new Date().toLocaleString(locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      })
+    : "";
+
   if (isCompleted) {
     return (
-      <div className="w-screen h-screen max-w-[100vw] bg-neutral-950 flex items-center justify-center p-6 font-sans">
-        <Card className="max-w-md w-full bg-neutral-900 border-neutral-800 text-center p-8 space-y-6 shadow-2xl">
-          <div className="w-16 h-16 rounded-3xl bg-emerald-950/80 border border-emerald-800/80 flex items-center justify-center text-emerald-400 mx-auto">
-            <CheckmarkCircle01Icon className="w-8 h-8 stroke-[2]" />
-          </div>
-
+      <div className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
+        <div className="w-full max-w-md space-y-7 rounded-xl border border-border bg-card p-7 text-center">
+          <CheckmarkCircle01Icon className="mx-auto size-9 text-success" />
           <div className="space-y-2">
-            <h2 className="font-serif text-2xl font-semibold text-white tracking-tight">
-              {language === "id" ? "Ujian Telah Selesai" : "Assessment Completed"}
-            </h2>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              {language === "id"
-                ? `Terima kasih, ${participantName}. Sesi ujian Anda telah resmi ditutup dan jawaban Anda tersimpan.`
-                : `Thank you, ${participantName}. Your assessment session has been successfully closed.`}
+            <h1 className="font-display text-2xl font-medium tracking-[-0.02em]">
+              {t.completedTitle}
+            </h1>
+            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+              {t.completedBody}
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono">
-            <div className="flex justify-between text-neutral-400">
-              <span>{language === "id" ? "Nama Peserta" : "Participant"}:</span>
-              <span className="text-neutral-100 font-bold">{participantName}</span>
+          <dl className="divide-y divide-border overflow-hidden rounded-lg border border-border text-left font-mono text-xs">
+            <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+              <dt className="text-muted-foreground">{t.participantName}</dt>
+              <dd className="truncate font-medium">{participantName}</dd>
             </div>
-            <div className="flex justify-between text-neutral-400">
-              <span>{language === "id" ? "Total Pelanggaran" : "Violations"}:</span>
-              <span className={violationCount > 0 ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>
+            <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+              <dt className="text-muted-foreground">{t.violations}</dt>
+              <dd
+                className={
+                  violationCount > 0 ? "font-medium text-destructive" : "font-medium text-success"
+                }
+              >
                 {violationCount}
-              </span>
+              </dd>
             </div>
-          </div>
+            {startedAtLabel ? (
+              <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+                <dt className="text-muted-foreground">{t.startedAt}</dt>
+                <dd className="tabular-nums text-muted-foreground">{startedAtLabel}</dd>
+              </div>
+            ) : null}
+          </dl>
 
-          <Link href="/">
-            <Button variant="primary" size="md" className="w-full">
-              <ArrowLeft01Icon className="w-4 h-4" />
-              {language === "id" ? "Kembali ke Halaman Utama" : "Return to Main Page"}
-            </Button>
-          </Link>
-        </Card>
+          <Button asChild className="h-10 w-full gap-2">
+            <Link href="/">
+              <ArrowLeft01Icon className="size-4" />
+              {t.backHome}
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans">
-      {/* Name Registration & Rules Modal Gate */}
-      <NameGateModal
-        isOpen={isNameGateOpen}
-        language={language}
-        onSubmit={handleNameSubmit}
-      />
+    <div className="relative h-svh w-full overflow-hidden bg-background select-none">
+      <NameGateModal isOpen={isNameGateOpen} onSubmit={handleNameSubmit} />
 
-      {/* Floating Header Controls: Language, Finish Button & Security Badge */}
-      {!isNameGateOpen && (
-        <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
+      {/* One toolbar, so the badge and controls can never overlap. */}
+      {!isNameGateOpen ? (
+        <div className="fixed top-3 right-3 z-30 flex items-center gap-2 sm:top-4 sm:right-4 sm:gap-1.5">
           <Button
-            variant="danger"
+            variant="destructive"
             size="sm"
             onClick={() => setShowFinishConfirm(true)}
-            className="shadow-xl font-semibold text-xs py-2 px-3"
+            className="h-10 gap-2 bg-destructive/90 px-3 text-destructive-foreground backdrop-blur-md hover:bg-destructive sm:h-8 sm:px-2.5"
           >
-            <Logout01Icon className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {language === "id" ? "Selesai Ujian" : "Finish Exam"}
-            </span>
+            <span className="sr-only sm:not-sr-only">{t.finishExam}</span>
           </Button>
-
-          <button
-            onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-            className="p-2 px-3 rounded-2xl bg-neutral-950/90 border border-neutral-800 shadow-xl backdrop-blur-md text-xs font-mono text-neutral-300 hover:text-white transition-colors flex items-center gap-1.5"
-          >
-            <Globe02Icon className="w-3.5 h-3.5 text-neutral-400" />
-            {language.toUpperCase()}
-          </button>
+          <div className="flex items-center rounded-lg border border-border bg-background/90 backdrop-blur-md">
+            <LanguageToggle className="h-10 px-2 sm:h-8" />
+            <button
+              type="button"
+              onClick={() => setLanguage(language === "id" ? "en" : "id")}
+              className="flex h-10 items-center gap-1.5 border-l border-border px-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8"
+              title={t.languageLabel}
+              aria-label={t.languageLabel}
+            >
+              <Globe02Icon className="size-3.5" />
+              {language.toUpperCase()}
+            </button>
+          </div>
           <SecurityBadge violationCount={violationCount} />
         </div>
-      )}
+      ) : null}
 
-      {/* Finish Confirmation Modal */}
-      {showFinishConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/90 backdrop-blur-md animate-in fade-in duration-200">
-          <Card className="max-w-md w-full bg-neutral-900 border-neutral-800 p-6 space-y-5 text-center shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400 mx-auto">
-              <AlertCircleIcon className="w-6 h-6" />
-            </div>
+      <Dialog open={showFinishConfirm} onOpenChange={setShowFinishConfirm}>
+        <DialogContent className="max-w-sm border-border bg-card">
+          <DialogHeader className="space-y-3 text-left">
+            <Alert02Icon className="size-6 text-warning" />
+            <DialogTitle className="font-display text-xl font-medium tracking-[-0.02em]">
+              {t.finishConfirmTitle}
+            </DialogTitle>
+            <DialogDescription className="text-pretty text-sm leading-relaxed">
+              {t.finishConfirmBody}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFinishConfirm(false)}>
+              {t.cancel}
+            </Button>
+            <Button onClick={handleConfirmFinish}>{t.finishConfirmYes}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <div className="space-y-2">
-              <h3 className="font-serif text-xl font-semibold text-white">
-                {language === "id" ? "Konfirmasi Selesai Ujian" : "Confirm Finish Assessment"}
-              </h3>
-              <p className="text-xs text-neutral-400 leading-relaxed">
-                {language === "id"
-                  ? "Apakah Anda sudah memastikan jawaban formulir terkirim dan ingin mengakhiri sesi ujian ini?"
-                  : "Have you submitted your form answers and wish to exit this session?"}
-              </p>
-            </div>
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                size="md"
-                className="w-1/2"
-                onClick={() => setShowFinishConfirm(false)}
-              >
-                {language === "id" ? "Batal" : "Cancel"}
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
-                className="w-1/2 font-semibold"
-                onClick={handleConfirmFinish}
-              >
-                {language === "id" ? "Ya, Selesai" : "Yes, Finish"}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Non-intrusive Violation Toast Notification */}
       <ViolationToast
         show={showToast}
         violationCount={violationCount}
         onClose={() => setShowToast(false)}
-        language={language}
       />
 
-      {/* Embedded Quiz Iframe */}
-      {targetUrl && !isNameGateOpen ? (
+      {isNameGateOpen && targetUrl ? (
+        // The form is only mounted after consent, so the gate sits on a plain canvas.
+        <div className="size-full bg-background" />
+      ) : targetUrl ? (
         <iframe
           ref={iframeRef}
           src={targetUrl}
-          className="w-full h-full border-0 bg-white"
-          title="Secure Assessment Session"
+          title={t.appName}
+          className="size-full border-0 bg-white"
           sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center p-6 bg-neutral-950">
-          <Card className="max-w-md w-full space-y-6 text-center p-8 bg-neutral-900 border-neutral-800">
-            <div className="mx-auto w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center text-neutral-300">
-              <AlertCircleIcon className="w-6 h-6 stroke-[1.5]" />
-            </div>
+        <div className="flex size-full items-center justify-center bg-background px-4">
+          <div className="w-full max-w-md space-y-6 rounded-xl border border-border bg-card p-7 text-center">
+            <Alert02Icon className="mx-auto size-7 text-muted-foreground" />
             <div className="space-y-2">
-              <h2 className="font-serif text-2xl font-medium text-white">
-                {language === "id" ? "Target Kuis Tidak Ditemukan" : "No Assessment Target Specified"}
-              </h2>
-              <p className="text-xs text-neutral-400 leading-relaxed font-sans">
-                {language === "id"
-                  ? "Silakan buka link kuis yang diberikan oleh Admin/Pengajar Anda."
-                  : "Please open a valid assessment link provided by your administrator."}
+              <h1 className="font-display text-xl font-medium tracking-[-0.02em]">
+                {t.noTargetTitle}
+              </h1>
+              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+                {t.noTargetSub}
               </p>
             </div>
-            <Link href="/admin">
-              <Button variant="primary" size="md" className="w-full">
-                <ArrowLeft01Icon className="w-4 h-4" />
+            <Button asChild variant="outline" className="h-10 w-full gap-2">
+              <Link href="/admin">
+                <ArrowLeft01Icon className="size-4" />
                 {t.adminConsole}
-              </Button>
-            </Link>
-          </Card>
+              </Link>
+            </Button>
+          </div>
         </div>
       )}
     </div>
@@ -357,11 +326,13 @@ function QuizContent() {
 }
 
 export default function QuizPage() {
+  const { t } = useLanguage();
+
   return (
     <Suspense
       fallback={
-        <div className="w-screen h-screen bg-neutral-950 flex items-center justify-center text-neutral-400 font-sans text-sm">
-          Loading Secure Assessment Environment...
+        <div className="flex h-svh items-center justify-center bg-background font-mono text-xs tracking-[0.12em] text-muted-foreground">
+          {t.loadingSession}
         </div>
       }
     >

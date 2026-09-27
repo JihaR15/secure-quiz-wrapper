@@ -1,127 +1,156 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { QRCodeSVG } from "qrcode.react";
-import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import { Add01Icon, Logout01Icon, UserIcon } from "hugeicons-react";
+import { Logo, Wordmark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { AmbientBackground } from "@/components/ui/ambient-background";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Shield01Icon,
-  QrCodeIcon,
-  Copy01Icon,
-  CheckmarkCircle01Icon,
-  ArrowRight01Icon,
-  Link01Icon,
-  Download01Icon,
-  UserIcon,
-  Logout01Icon,
-  Globe02Icon,
-  Delete02Icon,
-  Sun01Icon,
-  Moon01Icon,
-  AlertCircleIcon,
-} from "hugeicons-react";
-import { Language, translations } from "@/lib/i18n";
-import { getInitialTheme, applyTheme, Theme } from "@/lib/theme";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { CreateQuizForm } from "@/components/admin/create-quiz-form";
+import { QuizList } from "@/components/admin/quiz-list";
+import { QuizDetail } from "@/components/admin/quiz-detail";
+import { LanguageToggle } from "@/components/site/language-toggle";
+import { ThemeToggle } from "@/components/site/theme-toggle";
+import { useLanguage } from "@/components/providers";
+import { getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
+import type { Submission } from "@/lib/db";
 
-interface Submission {
-  id: string;
-  quizId: string;
-  participantName: string;
-  violationCount: number;
-  status: string;
-  startedAt: string;
-  lastActiveAt: string;
-}
+const LOCALE = { id: "id-ID", en: "en-GB" } as const;
 
-interface Quiz {
-  id: string;
-  title: string;
-  formUrl: string;
-  encodedUrl: string;
-  createdAt: string;
-  submissions: Submission[];
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="space-y-3">
+        <Skeleton className="h-3 w-28" />
+        <Skeleton className="h-8 w-72" />
+        <Skeleton className="h-3.5 w-full max-w-md" />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-12">
+        <div className="space-y-2 lg:col-span-4">
+          <Skeleton className="h-9 w-full" />
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-14 w-full" />
+          ))}
+        </div>
+        <div className="space-y-4 lg:col-span-8">
+          <Skeleton className="h-10 w-full" />
+          <div className="grid grid-cols-2 gap-px sm:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={index} className="h-20 w-full" />
+            ))}
+          </div>
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const [language, setLanguage] = useState<Language>("id");
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [adminName, setAdminName] = useState<string>("");
-  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [selectedQuizId, setSelectedQuizId] = useState<string | null>(null);
+  const { t, language } = useLanguage();
+  const locale = LOCALE[language];
 
-  // Form input state
-  const [titleInput, setTitleInput] = useState<string>("");
-  const [urlInput, setUrlInput] = useState<string>("");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [origin, setOrigin] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [quizzes, setQuizzes] = React.useState<QuizWithSubmissions[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [selectedQuizId, setSelectedQuizId] = React.useState<string | null>(null);
+  const [query, setQuery] = React.useState("");
+  const [adminName, setAdminName] = React.useState("");
 
-  const t = translations[language];
+  const [titleInput, setTitleInput] = React.useState("");
+  const [urlInput, setUrlInput] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [submitting, setSubmitting] = React.useState(false);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setOrigin(window.location.origin);
-    }
-    const initialTheme = getInitialTheme();
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
+  const [mobilePane, setMobilePane] = React.useState("quizzes");
+  const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [quizPendingDelete, setQuizPendingDelete] =
+    React.useState<QuizWithSubmissions | null>(null);
+  const [submissionPendingDelete, setSubmissionPendingDelete] =
+    React.useState<Submission | null>(null);
 
-  const toggleTheme = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    applyTheme(next);
-  };
+  const loadQuizzes = React.useCallback(
+    async (adminName?: string) => {
+      if (adminName !== undefined) setAdminName(adminName);
 
-  const loadDashboardData = async () => {
-    try {
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
+      try {
+        const res = await fetch("/api/quizzes");
+        const data = await res.json();
 
-      if (!meRes.ok || !meData.authenticated) {
-        router.push("/admin/login");
-        return;
-      }
-
-      setAdminName(meData.admin.name);
-
-      const quizRes = await fetch("/api/quizzes");
-      const quizData = await quizRes.json();
-
-      if (quizRes.ok && quizData.quizzes) {
-        setQuizzes(quizData.quizzes);
-        if (quizData.quizzes.length > 0 && !selectedQuizId) {
-          setSelectedQuizId(quizData.quizzes[0].id);
+        if (res.ok && Array.isArray(data.quizzes)) {
+          const nextQuizzes: QuizWithSubmissions[] = data.quizzes;
+          setQuizzes(nextQuizzes);
+          // Keep the current selection when it survives, otherwise fall back.
+          setSelectedQuizId((current) =>
+            current && nextQuizzes.some((quiz) => quiz.id === current)
+              ? current
+              : (nextQuizzes[0]?.id ?? null),
+          );
         }
+      } catch {
+        toast.error(t.toastNetworkError);
       }
-    } catch {
-      router.push("/admin/login");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [t.toastNetworkError],
+  );
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  // Browser-only value, read as a snapshot so SSR and hydration stay in sync.
+  const origin = React.useSyncExternalStore(
+    React.useCallback(() => () => {}, []),
+    () => window.location.origin,
+    () => "",
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/auth/me")
+      .then((res) => res.json().then((body: { authenticated?: boolean; admin?: { name?: string } }) => ({ res, body })))
+      .then(({ res, body }) => {
+        if (cancelled) return;
+        if (!res.ok || !body.authenticated) {
+          router.replace("/admin/login");
+          return;
+        }
+        return loadQuizzes(body.admin?.name ?? "");
+      })
+      .catch(() => {
+        if (!cancelled) router.replace("/admin/login");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadQuizzes, router]);
+
+  const selectedQuiz = quizzes.find((quiz) => quiz.id === selectedQuizId) ?? null;
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/admin/login");
+    router.replace("/admin/login");
   };
 
-  const handleCreateQuiz = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateQuiz = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
     if (!titleInput.trim() || !urlInput.trim()) {
-      setError(language === "id" ? "Judul kuis dan URL form wajib diisi" : "Title and URL are required");
+      setError(t.formRequired);
       return;
     }
 
@@ -132,486 +161,271 @@ export default function AdminDashboardPage() {
       const res = await fetch("/api/quizzes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: titleInput.trim(),
-          formUrl: urlInput.trim(),
-        }),
+        body: JSON.stringify({ title: titleInput.trim(), formUrl: urlInput.trim() }),
       });
-
       const data = await res.json();
+
       if (!res.ok) {
-        setError(data.error || "Gagal membuat kuis");
-        setSubmitting(false);
+        setError(data.error ?? t.toastCreateFailed);
         return;
       }
 
       setTitleInput("");
       setUrlInput("");
+      toast.success(t.toastCreated);
+      await loadQuizzes();
+    } catch {
+      setError(t.toastNetworkError);
+    } finally {
       setSubmitting(false);
-      loadDashboardData();
-    } catch {
-      setError("Terjadi kesalahan jaringan");
-      setSubmitting(false);
     }
   };
 
-  const handleDeleteQuiz = async (quizId: string) => {
-    if (
-      !confirm(
-        language === "id"
-          ? "Apakah Anda yakin ingin menghapus kuis ini beserta data hasilnya?"
-          : "Are you sure you want to delete this quiz and its responses?"
-      )
-    ) {
-      return;
-    }
+  const handleCopyLink = async (quiz: QuizWithSubmissions) => {
+    const fullUrl = getQuizUrl(origin, quiz);
 
-    try {
-      const res = await fetch(`/api/quizzes?id=${quizId}`, { method: "DELETE" });
-      if (res.ok) {
-        if (selectedQuizId === quizId) {
-          setSelectedQuizId(null);
-        }
-        loadDashboardData();
-      }
-    } catch {
-      // Error handling
-    }
-  };
-
-  const handleDeleteSubmission = async (submissionId: string) => {
-    if (
-      !confirm(
-        language === "id"
-          ? "Apakah Anda yakin ingin menghapus catatan peserta ini?"
-          : "Are you sure you want to delete this participant record?"
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/submissions?id=${submissionId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        loadDashboardData();
-      }
-    } catch {
-      // Error handling
-    }
-  };
-
-  const getQuizFullUrl = (quiz: Quiz) => {
-    return origin
-      ? `${origin}/quiz?form=${quiz.encodedUrl}&id=${quiz.id}`
-      : `/quiz?form=${quiz.encodedUrl}&id=${quiz.id}`;
-  };
-
-  const handleCopyLink = async (quiz: Quiz) => {
-    const fullUrl = getQuizFullUrl(quiz);
     try {
       await navigator.clipboard.writeText(fullUrl);
       setCopiedId(quiz.id);
-      setTimeout(() => setCopiedId(null), 2500);
+      window.setTimeout(() => setCopiedId(null), 2200);
     } catch {
-      // Fallback
+      toast.error(t.toastCopyFailed);
+    }
+  };
+
+  const confirmDeleteQuiz = async () => {
+    if (!quizPendingDelete) return;
+    const target = quizPendingDelete;
+    setQuizPendingDelete(null);
+
+    try {
+      const res = await fetch(`/api/quizzes?id=${target.id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      setSelectedQuizId((current) => (current === target.id ? null : current));
+      toast.success(t.toastDeletedQuiz);
+      await loadQuizzes();
+    } catch {
+      toast.error(t.toastNetworkError);
+    }
+  };
+
+  const confirmDeleteSubmission = async () => {
+    if (!submissionPendingDelete) return;
+    const target = submissionPendingDelete;
+    setSubmissionPendingDelete(null);
+
+    try {
+      const res = await fetch(`/api/submissions?id=${target.id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      toast.success(t.toastDeletedSubmission);
+      await loadQuizzes();
+    } catch {
+      toast.error(t.toastNetworkError);
     }
   };
 
   const adminFirstName = adminName.trim().split(" ")[0] || adminName;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen w-screen bg-slate-50 dark:bg-neutral-950 flex items-center justify-center text-slate-500 dark:text-neutral-400 font-sans text-sm">
-        {language === "id" ? "Memuat Dashboard Admin..." : "Loading Admin Dashboard..."}
-      </div>
-    );
-  }
-
-  const selectedQuiz = quizzes.find((q) => q.id === selectedQuizId);
-
   return (
-    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans transition-colors duration-300">
-      {/* React Bits Ambient Background */}
-      <AmbientBackground />
-
-      {/* Header Bar */}
-      <header className="w-full border-b border-slate-200 dark:border-neutral-900 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-3">
-          {/* Logo & Brand Image */}
-          <Link href="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-black border border-neutral-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-              <Image
-                src="/logo.png"
-                alt="Secure Quiz Wrapper Logo"
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <span className="font-sans font-semibold text-base sm:text-lg tracking-tight hidden sm:inline text-slate-900 dark:text-white">
-              Secure Quiz Wrapper
-            </span>
-            <span className="font-sans font-bold text-sm tracking-tight inline sm:hidden text-emerald-600 dark:text-emerald-400">
-              SQW
-            </span>
+    <div className="flex min-h-svh flex-col overflow-x-clip bg-background">
+      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+        <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-6">
+          <Link
+            href="/"
+            className="flex shrink-0 items-center gap-2.5 py-1.5"
+            aria-label={t.appName}
+          >
+            <Logo priority />
+            <Wordmark className="hidden sm:inline" />
           </Link>
 
-          {/* Controls & Logged-In Admin Nickname Badge (Equalized h-10 Height) */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Logged-In Admin Nickname Badge */}
-            <div className="h-10 flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300 max-w-[140px] sm:max-w-none truncate shrink-0">
-              <UserIcon className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span className="truncate font-semibold">{adminFirstName}</span>
-            </div>
-
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center shrink-0"
-              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {theme === "dark" ? (
-                <Sun01Icon className="w-4 h-4 text-amber-400 shrink-0" />
-              ) : (
-                <Moon01Icon className="w-4 h-4 text-emerald-600 shrink-0" />
-              )}
-            </button>
-
-            {/* Language Switcher */}
-            <button
-              onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-              className="h-10 px-3.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-1.5 shrink-0"
-              title="Switch Language"
-            >
-              <Globe02Icon className="w-4 h-4 text-emerald-500 shrink-0" />
-              <span className="font-bold hidden sm:inline">{language.toUpperCase()}</span>
-            </button>
-
-            {/* Logout Button */}
+          <div className="flex items-center gap-0.5">
+            {adminFirstName ? (
+              <span className="mr-1 hidden items-center gap-2 border-r border-border pr-3 text-sm text-muted-foreground sm:flex">
+                <UserIcon className="size-4" />
+                <span className="max-w-[12ch] truncate">{adminFirstName}</span>
+              </span>
+            ) : null}
+            <LanguageToggle className="h-10 sm:h-8" />
+            <ThemeToggle className="size-10 sm:size-8" />
             <Button
-              variant="outline"
-              size="md"
+              variant="ghost"
+              size="icon"
               onClick={handleLogout}
-              className="h-10 px-3.5 text-xs font-semibold shrink-0"
               title={t.logout}
+              aria-label={t.logout}
+              className="size-10 sm:size-8"
             >
-              <Logout01Icon className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">{t.logout}</span>
+              <Logout01Icon className="size-4" />
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Admin Section */}
-      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8 sm:space-y-10 w-full flex-1">
-        {/* Admin Title Bar */}
-        <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs uppercase tracking-wider font-medium">
-            <QrCodeIcon className="w-3.5 h-3.5" />
-            {t.adminConsole}
-          </div>
-          <h1 className="font-serif text-2xl sm:text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
-            {t.dashboardTitle}
-          </h1>
-          <p className="text-slate-600 dark:text-neutral-400 text-xs sm:text-sm max-w-2xl">
-            {t.dashboardSub}
-          </p>
-        </div>
-
-        {/* Top Form: Create New Quiz */}
-        <Card className="space-y-6">
-          <h2 className="font-serif text-lg sm:text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-            <Link01Icon className="w-5 h-5 text-emerald-500" />
-            {t.generateQuiz}
-          </h2>
-
-          <form onSubmit={handleCreateQuiz} className="grid grid-cols-1 md:grid-cols-12 gap-4">
-            <div className="md:col-span-4">
-              <Input
-                type="text"
-                placeholder={language === "id" ? "Judul Kuis (misal: Ujian Fisika Kelas X)" : "Quiz Title"}
-                value={titleInput}
-                onChange={(e) => setTitleInput(e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-6">
-              <Input
-                type="url"
-                placeholder="https://docs.google.com/forms/d/e/.../viewform"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Button variant="primary" size="md" className="w-full h-12" disabled={submitting}>
-                {submitting ? "..." : t.generateQuiz}
-              </Button>
-            </div>
-          </form>
-
-          {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
-        </Card>
-
-        {/* Quizzes List & Participant Results Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column: My Quizzes List (4 Cols) */}
-          <div className="lg:col-span-4 space-y-4">
-            <h3 className="font-serif text-lg font-medium text-slate-900 dark:text-white flex items-center justify-between">
-              <span>{t.myQuizzes}</span>
-              <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">({quizzes.length})</span>
-            </h3>
-
-            {quizzes.length === 0 ? (
-              <Card className="text-center p-6 text-xs text-slate-500 dark:text-neutral-500">
-                {language === "id"
-                  ? "Belum ada kuis yang dibuat. Gunakan formulir di atas untuk membuat kuis pertama Anda."
-                  : "No quizzes created yet. Use the form above to create your first quiz."}
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {quizzes.map((q) => {
-                  const isSelected = q.id === selectedQuizId;
-                  const submissionCount = q.submissions.length;
-                  const totalViolations = q.submissions.reduce((acc, s) => acc + s.violationCount, 0);
-
-                  return (
-                    <div
-                      key={q.id}
-                      onClick={() => setSelectedQuizId(q.id)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 ${
-                        isSelected
-                          ? "bg-white dark:bg-neutral-900 border-emerald-500/50 shadow-lg shadow-emerald-500/10"
-                          : "bg-white/60 dark:bg-neutral-900/40 border-slate-200 dark:border-neutral-800/80 hover:bg-slate-100 dark:hover:bg-neutral-900/70"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h4 className="font-semibold text-sm text-slate-900 dark:text-neutral-100 line-clamp-1">
-                            {q.title}
-                          </h4>
-                          <span className="text-[11px] text-slate-500 dark:text-neutral-500 font-mono">
-                            {new Date(q.createdAt).toLocaleDateString("id-ID")}
-                          </span>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteQuiz(q.id);
-                          }}
-                          className="text-slate-400 dark:text-neutral-500 hover:text-red-500 p-1 transition-colors"
-                          title={language === "id" ? "Hapus Kuis" : "Delete Quiz"}
-                        >
-                          <Delete02Icon className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 font-mono pt-1">
-                        <span>{submissionCount} {language === "id" ? "Peserta" : "Participants"}</span>
-                        <span className={totalViolations > 0 ? "text-red-500 font-bold" : "text-slate-500 dark:text-neutral-500"}>
-                          {totalViolations} {language === "id" ? "Pelanggaran" : "Violations"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 py-10 sm:px-6 sm:py-14">
+        {loading ? (
+          <DashboardSkeleton />
+        ) : (
+          <div className="space-y-10">
+            {/* Page title */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <span aria-hidden className="h-px w-8 bg-primary" />
+                <span className="font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground">
+                  {t.adminConsole}
+                </span>
               </div>
-            )}
-          </div>
+              <h1 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-medium leading-[1.05] tracking-[-0.03em] text-balance">
+                {t.dashboardTitle}
+              </h1>
+              <p className="max-w-[62ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                {t.dashboardSub}
+              </p>
+            </div>
 
-          {/* Right Column: Quiz Details, QR & Participant Table (8 Cols) */}
-          <div className="lg:col-span-8 space-y-6">
-            {selectedQuiz ? (
-              <>
-                <Card className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-neutral-800 pb-4">
-                    <div>
-                      <span className="text-xs uppercase tracking-wider text-slate-500 dark:text-neutral-400">
-                        {t.selectedQuiz}
-                      </span>
-                      <h3 className="font-serif text-2xl font-medium text-slate-900 dark:text-white">
-                        {selectedQuiz.title}
-                      </h3>
-                    </div>
-
-                    <a
-                      href={`/api/export?quizId=${selectedQuiz.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="primary" size="md" className="shrink-0 w-full sm:w-auto">
-                        <Download01Icon className="w-4 h-4" />
-                        {t.exportExcel}
-                      </Button>
-                    </a>
-                  </div>
-
-                  {/* Shareable Link & QR Code Display */}
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-                    <div className="md:col-span-8 space-y-3">
-                      <label className="text-xs font-medium text-slate-700 dark:text-neutral-300">
-                        {t.quizAccessLink}
-                      </label>
-                      <p className="font-mono text-xs text-slate-800 dark:text-neutral-200 break-all bg-slate-100 dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 select-all">
-                        {getQuizFullUrl(selectedQuiz)}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleCopyLink(selectedQuiz)}
-                        >
-                          {copiedId === selectedQuiz.id ? (
-                            <>
-                              <CheckmarkCircle01Icon className="w-4 h-4 text-emerald-500" />
-                              {t.linkCopied}
-                            </>
-                          ) : (
-                            <>
-                              <Copy01Icon className="w-4 h-4" />
-                              {t.copyQuizLink}
-                            </>
-                          )}
-                        </Button>
-                        <a
-                          href={getQuizFullUrl(selectedQuiz)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <Button variant="outline" size="sm">
-                            {t.testQuizSession}
-                            <ArrowRight01Icon className="w-4 h-4" />
-                          </Button>
-                        </a>
-                      </div>
-                    </div>
-
-                    <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-slate-100 dark:bg-neutral-950 rounded-2xl border border-slate-200 dark:border-neutral-800">
-                      <QRCodeSVG
-                        value={getQuizFullUrl(selectedQuiz)}
-                        size={130}
-                        bgColor="transparent"
-                        fgColor={theme === "dark" ? "#f5f5f5" : "#0f172a"}
-                        level="H"
-                      />
-                      <span className="text-[11px] font-mono text-slate-500 dark:text-neutral-500 mt-2">
-                        {t.scanQrCode}
-                      </span>
-                    </div>
-                  </div>
-                </Card>
-
-                {/* Participant Submissions & Violations Table */}
-                <Card className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-serif text-lg font-medium text-slate-900 dark:text-white flex items-center gap-2">
-                      <UserIcon className="w-4 h-4 text-emerald-500" />
-                      {t.participantResults}
-                    </h4>
-                    <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">
-                      Total: {selectedQuiz.submissions.length} {language === "id" ? "Peserta" : "Participants"}
-                    </span>
-                  </div>
-
-                  {selectedQuiz.submissions.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-500 dark:text-neutral-500 border border-dashed border-slate-200 dark:border-neutral-800 rounded-2xl">
-                      {t.noParticipants}
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs font-sans">
-                        <thead className="bg-slate-100 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 uppercase text-[10px] font-mono tracking-wider">
-                          <tr>
-                            <th className="p-3 pl-4">No.</th>
-                            <th className="p-3">{t.participantName}</th>
-                            <th className="p-3">{t.violations}</th>
-                            <th className="p-3">{t.status}</th>
-                            <th className="p-3">{t.startedAt}</th>
-                            <th className="p-3">{t.lastActive}</th>
-                            <th className="p-3 pr-4 text-right">{t.actions}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200/60 dark:divide-neutral-800/60">
-                          {selectedQuiz.submissions.map((sub, idx) => {
-                            const hasViolation = sub.violationCount > 0;
-                            const highRisk = sub.violationCount >= 5;
-
-                            return (
-                              <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-neutral-900/80 transition-colors">
-                                <td className="p-3 pl-4 font-mono text-slate-400 dark:text-neutral-500">{idx + 1}</td>
-                                <td className="p-3 font-semibold text-slate-900 dark:text-neutral-100">
-                                  {sub.participantName}
-                                </td>
-                                <td className="p-3 font-mono font-bold">
-                                  <span
-                                    className={`px-2.5 py-1 rounded-lg border text-xs ${
-                                      hasViolation
-                                        ? "bg-red-500/10 border-red-500/30 text-red-500"
-                                        : "bg-slate-100 dark:bg-neutral-950 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
-                                    }`}
-                                  >
-                                    {sub.violationCount}
-                                  </span>
-                                </td>
-                                <td className="p-3">
-                                  {highRisk ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-500 text-[11px] font-medium">
-                                      {t.riskHigh}
-                                    </span>
-                                  ) : hasViolation ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[11px] font-medium">
-                                      {t.riskWarning}
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
-                                      {t.riskNormal}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="p-3 font-mono text-slate-500 dark:text-neutral-400">
-                                  {new Date(sub.startedAt).toLocaleTimeString("id-ID", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </td>
-                                <td className="p-3 font-mono text-slate-500 dark:text-neutral-400">
-                                  {new Date(sub.lastActiveAt).toLocaleTimeString("id-ID", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </td>
-                                <td className="p-3 pr-4 text-right">
-                                  <button
-                                    onClick={() => handleDeleteSubmission(sub.id)}
-                                    className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                                    title={language === "id" ? "Hapus Data Peserta" : "Delete Participant"}
-                                  >
-                                    <Delete02Icon className="w-4 h-4" />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </Card>
-              </>
-            ) : (
-              <Card className="p-12 text-center text-sm text-slate-500 dark:text-neutral-400 space-y-3">
-                <AlertCircleIcon className="w-8 h-8 text-slate-400 dark:text-neutral-500 mx-auto" />
-                <p>
-                  {language === "id"
-                    ? "Pilih kuis dari daftar di sebelah kiri untuk melihat QR Code dan hasil pelanggaran peserta."
-                    : "Select a quiz from the list on the left to view QR Code and participant violation results."}
+            {/* Create quiz */}
+            <section className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
+              <div className="flex items-center gap-2.5">
+                <Add01Icon className="size-4 text-muted-foreground" />
+                <h2 className="text-sm font-semibold tracking-[-0.01em]">
+                  {t.createQuizTitle}
+                </h2>
+                <p className="ml-auto hidden text-xs text-muted-foreground lg:block">
+                  {t.createQuizSub}
                 </p>
-              </Card>
-            )}
+              </div>
+              <CreateQuizForm
+                title={titleInput}
+                url={urlInput}
+                error={error}
+                submitting={submitting}
+                onTitleChange={setTitleInput}
+                onUrlChange={setUrlInput}
+                onSubmit={handleCreateQuiz}
+              />
+            </section>
+
+            {/* Quizzes + detail. Below lg the two panes become tabs; at lg both
+                are shown side by side, so the inactive panel is only hidden
+                with a `lg:hidden` override rather than the `hidden` attribute. */}
+            <Tabs
+              value={mobilePane}
+              onValueChange={setMobilePane}
+              className="gap-6 lg:hidden"
+            >
+              <TabsList>
+                <TabsTrigger value="quizzes" className="h-10 sm:h-8">
+                  {t.tabQuizzes}
+                  <span className="font-mono text-[0.6875rem] tabular-nums opacity-60">
+                    {quizzes.length}
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger value="detail" className="h-10 sm:h-8">
+                  {t.tabDetail}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="grid gap-8 lg:grid-cols-12">
+              <section
+                className={`space-y-4 lg:col-span-4 ${
+                  mobilePane === "detail" ? "hidden lg:block" : ""
+                }`}
+              >
+                <h2 className="flex items-baseline gap-2 text-sm font-semibold tracking-[-0.01em]">
+                  {t.myQuizzes}
+                  <span className="font-mono text-xs font-normal tabular-nums text-muted-foreground">
+                    ({quizzes.length})
+                  </span>
+                </h2>
+                <QuizList
+                  quizzes={quizzes}
+                  selectedId={selectedQuizId}
+                  query={query}
+                  locale={locale}
+                  onQueryChange={setQuery}
+                  onSelect={setSelectedQuizId}
+                  onRequestDelete={setQuizPendingDelete}
+                />
+              </section>
+
+              <section
+                className={`lg:col-span-8 ${
+                  mobilePane === "quizzes" ? "hidden lg:block" : ""
+                }`}
+              >
+                {selectedQuiz ? (
+                  <QuizDetail
+                    quiz={selectedQuiz}
+                    origin={origin}
+                    locale={locale}
+                    copied={copiedId === selectedQuiz.id}
+                    onCopy={handleCopyLink}
+                    onRequestDeleteSubmission={setSubmissionPendingDelete}
+                  />
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">
+                    <p className="text-sm font-medium">{t.noQuizSelectedTitle}</p>
+                    <p className="mx-auto mt-1.5 max-w-[38ch] text-pretty text-sm text-muted-foreground">
+                      {t.noQuizSelectedSub}
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
           </div>
-        </div>
+        )}
       </main>
+
+      <AlertDialog
+        open={quizPendingDelete !== null}
+        onOpenChange={(open) => !open && setQuizPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteQuizTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {quizPendingDelete
+                ? `${quizPendingDelete.title} — ${t.deleteQuizBody}`
+                : t.deleteQuizBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteQuiz}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {t.deleteConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={submissionPendingDelete !== null}
+        onOpenChange={(open) => !open && setSubmissionPendingDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.deleteParticipantTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {submissionPendingDelete
+                ? `${submissionPendingDelete.participantName} — ${t.deleteParticipantBody}`
+                : t.deleteParticipantBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSubmission}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {t.deleteConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

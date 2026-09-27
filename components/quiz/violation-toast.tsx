@@ -1,53 +1,45 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertCircleIcon, Shield01Icon } from "hugeicons-react";
+import * as React from "react";
+import { Alert02Icon } from "hugeicons-react";
+import { useLanguage } from "@/components/providers";
 
-interface ViolationToastProps {
+type ViolationToastProps = {
   show: boolean;
   violationCount: number;
   onClose: () => void;
-  language?: "id" | "en";
-}
+};
 
-export function ViolationToast({
-  show,
-  violationCount,
-  onClose,
-  language = "id",
-}: ViolationToastProps) {
-  useEffect(() => {
-    if (show) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 4500);
-      return () => clearTimeout(timer);
-    }
+export function ViolationToast({ show, violationCount, onClose }: ViolationToastProps) {
+  const { t } = useLanguage();
+
+  React.useEffect(() => {
+    if (!show) return;
+    const timer = window.setTimeout(onClose, 4500);
+    return () => window.clearTimeout(timer);
   }, [show, onClose]);
 
   if (!show) return null;
 
   return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none">
-      <div className="p-4 rounded-2xl bg-neutral-900/95 border border-red-800/80 shadow-2xl shadow-red-950/60 backdrop-blur-md flex items-start gap-3.5 text-neutral-100 pointer-events-auto">
-        <div className="w-10 h-10 rounded-xl bg-red-950/80 border border-red-800/80 flex items-center justify-center text-red-400 shrink-0">
-          <AlertCircleIcon className="w-5 h-5 stroke-[2]" />
-        </div>
-
-        <div className="flex-1 space-y-1 font-sans">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Shield01Icon className="w-3.5 h-3.5" />
-              {language === "id" ? "Pelanggaran Keamanan" : "Security Violation"} #{violationCount}
-            </span>
-            <span className="text-[10px] font-mono text-neutral-400">
-              {language === "id" ? "Tercatat" : "Logged"}
-            </span>
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-0 top-20 z-50 mx-auto w-full max-w-md animate-[rise_0.35s_cubic-bezier(0.16,1,0.3,1)] px-4"
+    >
+      <div className="pointer-events-auto flex items-start gap-3 rounded-lg border border-destructive/40 bg-popover px-4 py-3 text-popover-foreground">
+        <Alert02Icon className="mt-0.5 size-4 shrink-0 text-destructive" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex items-center justify-between gap-3">
+            <p className="truncate font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-destructive">
+              {t.violationDetected} #{violationCount}
+            </p>
+            <p className="shrink-0 font-mono text-[0.6875rem] text-muted-foreground">
+              {t.violationLogged}
+            </p>
           </div>
-          <p className="text-xs text-neutral-300 leading-relaxed font-medium">
-            {language === "id"
-              ? "Terdeteksi beralih aplikasi atau tab browser! Pelanggaran telah dicatat."
-              : "App focus lost or tab switch detected! Violation has been logged."}
+          <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
+            {t.violationFocusLost}
           </p>
         </div>
       </div>

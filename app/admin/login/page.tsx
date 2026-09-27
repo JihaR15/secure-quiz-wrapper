@@ -1,160 +1,126 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import * as React from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import { ArrowRight01Icon, Alert02Icon } from "hugeicons-react";
+import { AuthShell } from "@/components/site/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AmbientBackground } from "@/components/ui/ambient-background";
-import { Mail01Icon, LockIcon, ArrowRight01Icon, ArrowLeft01Icon, Sun01Icon, Moon01Icon } from "hugeicons-react";
-import { getInitialTheme, applyTheme, Theme } from "@/lib/theme";
+import { Label } from "@/components/ui/label";
+import { useLanguage } from "@/components/providers";
+
+const FIELD_CLASS = "h-10";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [theme, setTheme] = useState<Theme>("dark");
+  const { t } = useLanguage();
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState("");
+  const [pending, setPending] = React.useState(false);
 
-  useEffect(() => {
-    const initialTheme = getInitialTheme();
-    setTheme(initialTheme);
-    applyTheme(initialTheme);
-  }, []);
-
-  const toggleTheme = () => {
-    const next: Theme = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    applyTheme(next);
-  };
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (pending) return;
     setError("");
-    setLoading(true);
+    setPending(true);
 
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error || "Gagal masuk.");
-        setLoading(false);
+        setError(data.error || t.toastNetworkError);
+        setPending(false);
         return;
       }
 
-      router.push("/admin");
+      toast.success(t.loginCta);
+      router.replace("/admin");
+      router.refresh();
     } catch {
-      setError("Terjadi kesalahan jaringan.");
-      setLoading(false);
+      setError(t.toastNetworkError);
+      setPending(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans p-6 transition-colors duration-300">
-      <AmbientBackground />
-
-      <div className="relative z-10 max-w-md w-full mx-auto flex items-center justify-between mb-6">
-        <Link href="/">
-          <Button variant="outline" size="sm" className="h-10 px-3.5 text-xs font-semibold">
-            <ArrowLeft01Icon className="w-4 h-4" />
-            Kembali ke Beranda
-          </Button>
-        </Link>
-
-        <button
-          onClick={toggleTheme}
-          className="h-10 w-10 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm flex items-center justify-center shrink-0"
-        >
-          {theme === "dark" ? (
-            <Sun01Icon className="w-4 h-4 text-amber-400 shrink-0" />
-          ) : (
-            <Moon01Icon className="w-4 h-4 text-emerald-600 shrink-0" />
-          )}
-        </button>
-      </div>
-
-      <Card className="relative z-10 max-w-md w-full mx-auto p-8 space-y-6">
-        <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-black border border-neutral-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-            <Image
-              src="/logo.png"
-              alt="SQW Logo"
-              width={48}
-              height={48}
-              className="w-full h-full object-contain"
-            />
-          </div>
-          <h1 className="font-serif text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
-            Login Portal Admin
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-neutral-400">
-            Masuk untuk membuat kuis baru dan memantau hasil & pelanggaran peserta.
-          </p>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-700 dark:text-neutral-300 flex items-center gap-2">
-              <Mail01Icon className="w-4 h-4 text-emerald-500" />
-              Alamat Email
-            </label>
-            <Input
-              type="email"
-              placeholder="admin@sekolah.sch.id"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-700 dark:text-neutral-300 flex items-center gap-2">
-              <LockIcon className="w-4 h-4 text-emerald-500" />
-              Kata Sandi
-            </label>
-            <Input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          {error && (
-            <p className="text-xs text-red-500 font-medium px-1 bg-red-500/10 p-2.5 rounded-xl border border-red-500/30">
-              {error}
-            </p>
-          )}
-
-          <Button
-            variant="primary"
-            size="lg"
-            className="w-full font-semibold"
-            disabled={loading}
+    <AuthShell
+      eyebrow={t.adminConsole}
+      title={t.loginTitle}
+      sub={t.loginSub}
+      asidePoints={[
+        t.featureFocusTitle,
+        t.featureClipboardTitle,
+        t.featureUrlTitle,
+        t.featureLiveTitle,
+        t.featureExportTitle,
+      ]}
+      footer={
+        <>
+          {t.noAdminAccount}{" "}
+          <Link
+            href="/admin/register"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
           >
-            {loading ? "Memproses..." : "Masuk ke Dashboard"}
-            <ArrowRight01Icon className="w-4 h-4" />
-          </Button>
-        </form>
-
-        <div className="text-center text-xs text-slate-500 dark:text-neutral-400 pt-2 border-t border-slate-200 dark:border-neutral-800">
-          Belum memiliki akun Admin?{" "}
-          <Link href="/admin/register" className="text-emerald-600 dark:text-emerald-400 hover:underline font-medium">
-            Daftar Sekarang
+            {t.createNow}
           </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleLogin} noValidate className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-xs text-muted-foreground">
+            {t.email}
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="admin@sekolah.sch.id"
+            className={FIELD_CLASS}
+          />
         </div>
-      </Card>
 
-      <div className="py-4" />
-    </div>
+        <div className="space-y-2">
+          <Label htmlFor="password" className="text-xs text-muted-foreground">
+            {t.password}
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            className={FIELD_CLASS}
+          />
+        </div>
+
+        {error ? (
+          <p
+            role="alert"
+            className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5 text-xs leading-relaxed text-destructive"
+          >
+            <Alert02Icon className="mt-px size-3.5 shrink-0" />
+            {error}
+          </p>
+        ) : null}
+
+        <Button type="submit" disabled={pending} className="h-10 w-full gap-2">
+          {pending ? t.loginPending : t.loginCta}
+          {pending ? null : <ArrowRight01Icon className="size-4" />}
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

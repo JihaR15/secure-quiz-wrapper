@@ -1,46 +1,65 @@
 "use client";
 
-import { useState } from "react";
-import { Card } from "@/components/ui/card";
+import * as React from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/brand/logo";
+import { useLanguage } from "@/components/providers";
 import {
-  Shield01Icon,
-  UserIcon,
+  Alert02Icon,
+  ArrowExpand01Icon,
   ArrowRight01Icon,
   SmartPhone01Icon,
-  ViewOffIcon,
-  CheckmarkCircle01Icon,
-  ArrowExpand01Icon,
 } from "hugeicons-react";
-import { translations, Language } from "@/lib/i18n";
 
-interface NameGateModalProps {
+type NameGateModalProps = {
   isOpen: boolean;
-  language: Language;
   onSubmit: (name: string) => void;
-}
+};
 
-export function NameGateModal({ isOpen, language, onSubmit }: NameGateModalProps) {
-  const [step, setStep] = useState<"name" | "rules">("name");
-  const [name, setName] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const t = translations[language];
+const RULES = [
+  {
+    icon: <SmartPhone01Icon className="size-4 text-warning" />,
+    titleKey: "ruleDndTitle" as const,
+    bodyKey: "ruleDndSub" as const,
+  },
+  {
+    icon: <Alert02Icon className="size-4 text-destructive" />,
+    titleKey: "ruleNoSwitchTitle" as const,
+    bodyKey: "ruleNoSwitchSub" as const,
+  },
+  {
+    icon: <ArrowExpand01Icon className="size-4 text-primary" />,
+    titleKey: "ruleFullscreenTitle" as const,
+    bodyKey: "ruleFullscreenSub" as const,
+  },
+];
 
-  if (!isOpen) return null;
+export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
+  const { t, language } = useLanguage();
+  const [step, setStep] = React.useState<"name" | "rules">("name");
+  const [name, setName] = React.useState("");
+  const [error, setError] = React.useState("");
 
-  const handleNextStep = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleNext = (event: React.FormEvent) => {
+    event.preventDefault();
     if (!name.trim()) {
-      setError(language === "id" ? "Nama lengkap wajib diisi" : "Full name is required");
+      setError(t.quizGateNameRequired);
       return;
     }
     setError("");
     setStep("rules");
   };
 
-  const handleStartExam = () => {
-    // Attempt auto fullscreen
+  const handleStart = () => {
     if (typeof document !== "undefined" && document.documentElement.requestFullscreen) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
@@ -48,137 +67,97 @@ export function NameGateModal({ isOpen, language, onSubmit }: NameGateModalProps
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-neutral-950/95 backdrop-blur-xl animate-in fade-in duration-200 font-sans">
-      <Card className="max-w-md w-full bg-neutral-900 border-neutral-800 shadow-2xl space-y-6 p-8">
-        <div className="mx-auto w-14 h-14 rounded-2xl bg-neutral-800 border border-neutral-700/60 flex items-center justify-center text-neutral-100">
-          <Shield01Icon className="w-7 h-7 stroke-[1.5]" />
-        </div>
+    <Dialog open={isOpen}>
+      <DialogContent
+        showCloseButton={false}
+        className="max-w-md gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-md"
+      >
+        <DialogHeader className="space-y-5 px-6 pt-7 pb-0 text-left sm:px-7">
+          <Logo className="h-6" priority />
+          <div className="space-y-1.5">
+            <DialogTitle className="font-display text-2xl font-medium tracking-[-0.02em]">
+              {step === "name" ? t.quizGateTitle : t.quizGateRulesTitle}
+            </DialogTitle>
+            <DialogDescription className="text-pretty text-sm leading-relaxed">
+              {step === "name" ? t.quizGateSub : t.quizGateRulesSub}
+            </DialogDescription>
+          </div>
+        </DialogHeader>
 
-        {step === "name" ? (
-          <>
-            <div className="text-center space-y-2">
-              <h2 className="font-serif text-2xl font-semibold text-white tracking-tight">
-                {t.quizGateTitle}
-              </h2>
-              <p className="text-xs text-neutral-400 leading-relaxed">
-                {t.quizGateSub}
-              </p>
-            </div>
-
-            <form onSubmit={handleNextStep} className="space-y-4">
+        <div className="px-6 pt-6 pb-7 sm:px-7">
+          {step === "name" ? (
+            <form onSubmit={handleNext} noValidate className="space-y-5">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-neutral-300 flex items-center gap-2">
-                  <UserIcon className="w-4 h-4 text-neutral-400" />
+                <Label htmlFor="participant-name" className="text-xs text-muted-foreground">
                   {t.fullName}
-                </label>
+                </Label>
                 <Input
-                  type="text"
-                  placeholder={language === "id" ? "Contoh: Budi Santoso" : "e.g., John Doe"}
+                  id="participant-name"
                   value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    setError("");
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    if (error) setError("");
                   }}
-                  error={error}
+                  placeholder={language === "id" ? "Contoh: Budi Santoso" : "e.g., John Doe"}
                   autoFocus
+                  autoComplete="off"
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "participant-name-error" : undefined}
+                  className="h-10"
                 />
+                {error ? (
+                  <p id="participant-name-error" className="text-xs text-destructive">
+                    {error}
+                  </p>
+                ) : null}
               </div>
 
-              <Button variant="primary" size="lg" className="w-full font-semibold">
-                {language === "id" ? "Lanjut ke Petunjuk Ujian" : "Proceed to Instructions"}
-                <ArrowRight01Icon className="w-4 h-4" />
+              <Button type="submit" className="h-10 w-full gap-2">
+                {t.quizGateNext}
+                <ArrowRight01Icon className="size-4" />
               </Button>
-            </form>
-          </>
-        ) : (
-          <>
-            <div className="text-center space-y-2">
-              <h2 className="font-serif text-2xl font-semibold text-white tracking-tight">
-                {language === "id" ? "Petunjuk & Aturan Ujian" : "Exam Rules & Guidance"}
-              </h2>
-              <p className="text-xs text-neutral-400 leading-relaxed">
-                {language === "id"
-                  ? "Harap perhatikan petunjuk penting berikut sebelum memulai."
-                  : "Please read the following guidelines carefully before starting."}
+
+              <p className="text-center text-xs text-muted-foreground">
+                {t.quizGateFootnote}
               </p>
-            </div>
+            </form>
+          ) : (
+            <div className="space-y-5">
+              <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+                {RULES.map((rule) => (
+                  <li key={rule.titleKey} className="flex gap-3 p-4">
+                    <span aria-hidden className="mt-0.5 shrink-0">
+                      {rule.icon}
+                    </span>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium tracking-[-0.01em]">
+                        {t[rule.titleKey]}
+                      </p>
+                      <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
+                        {t[rule.bodyKey]}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
 
-            <div className="space-y-3 p-4 rounded-2xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-300">
-              <div className="flex items-start gap-3">
-                <SmartPhone01Icon className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold text-white block">
-                    {language === "id" ? "Nyalakan Mode Jangan Ganggu (DND)" : "Enable Do Not Disturb (DND)"}
-                  </span>
-                  <p className="text-neutral-400 text-[11px] mt-0.5">
-                    {language === "id"
-                      ? "Harap bisukan (silent) HP atau aktifkan mode Jangan Ganggu agar notifikasi aplikasi/telepon tidak mengganggu ujian."
-                      : "Silence your phone or turn on DND mode to prevent incoming calls/notifications."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="h-px bg-neutral-900" />
-
-              <div className="flex items-start gap-3">
-                <ViewOffIcon className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold text-white block">
-                    {language === "id" ? "Dilarang Pindah Tab atau Aplikasi" : "Do Not Switch Tabs or Apps"}
-                  </span>
-                  <p className="text-neutral-400 text-[11px] mt-0.5">
-                    {language === "id"
-                      ? "Sistem memantau pergerakan tab secara otomatis. Berpindah aplikasi/tab akan dicatat sebagai pelanggaran."
-                      : "Tab switches are automatically monitored and logged as violations."}
-                  </p>
-                </div>
-              </div>
-
-              <div className="h-px bg-neutral-900" />
-
-              <div className="flex items-start gap-3">
-                <ArrowExpand01Icon className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <span className="font-semibold text-white block">
-                    {language === "id" ? "Mode Layar Penuh (Fullscreen)" : "Automatic Fullscreen Mode"}
-                  </span>
-                  <p className="text-neutral-400 text-[11px] mt-0.5">
-                    {language === "id"
-                      ? "Ujian akan dibuka dalam layar penuh. Kerjakan ujian dengan jujur dan sebaik mungkin."
-                      : "The assessment will launch in fullscreen. Do your best."}
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Button onClick={handleStart} className="h-10 w-full gap-2">
+                  {t.startQuiz}
+                  <ArrowRight01Icon className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setStep("name")}
+                  className="h-8 w-full text-xs text-muted-foreground"
+                >
+                  {t.changeName}
+                </Button>
               </div>
             </div>
-
-            <div className="space-y-2 pt-2">
-              <Button
-                variant="primary"
-                size="lg"
-                className="w-full font-semibold"
-                onClick={handleStartExam}
-              >
-                <CheckmarkCircle01Icon className="w-4 h-4 text-emerald-400" />
-                {language === "id" ? "Saya Mengerti & Mulai Ujian" : "I Understand & Start Exam"}
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => setStep("name")}
-                className="w-full text-center text-xs text-neutral-500 hover:text-neutral-300 py-1 transition-colors"
-              >
-                {language === "id" ? "Ubah Nama" : "Change Name"}
-              </button>
-            </div>
-          </>
-        )}
-
-        <div className="text-[11px] text-neutral-500 text-center font-sans">
-          {language === "id"
-            ? "Sesi ujian akan mencatat waktu & aktivitas Anda"
-            : "Session time & integrity status will be recorded"}
+          )}
         </div>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
