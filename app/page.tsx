@@ -11,7 +11,6 @@ import {
   ViewOffIcon,
   Copy01Icon,
   Link01Icon,
-  CheckmarkCircle01Icon,
   Shield01Icon,
   Menu01Icon,
   Cancel01Icon,
@@ -28,14 +27,12 @@ export default function LandingPage() {
 
   const t = translations[language];
 
-  // Apply theme to document element
+  // Apply dark mode class to document.documentElement
   useEffect(() => {
     const root = document.documentElement;
     if (isDarkMode) {
       root.classList.add("dark");
-      root.classList.remove("light");
     } else {
-      root.classList.add("light");
       root.classList.remove("dark");
     }
   }, [isDarkMode]);
@@ -45,9 +42,9 @@ export default function LandingPage() {
       {/* Navigation Header */}
       <header className="w-full border-b border-slate-200/80 dark:border-neutral-900/80 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo & Brand Name */}
+          {/* Logo & Brand Name (Flat clean icon, no glow) */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-emerald-600/30">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
               <Shield01Icon className="w-5 h-5 stroke-[2] shrink-0" />
             </div>
             <span className="font-sans font-semibold text-lg tracking-tight truncate text-slate-900 dark:text-white">
@@ -55,23 +52,21 @@ export default function LandingPage() {
             </span>
           </div>
 
-          {/* Desktop Navigation & Controls */}
+          {/* Desktop Controls */}
           <div className="hidden md:flex items-center gap-3">
-            {/* Language Switcher (Default ID) */}
+            {/* Language Switcher */}
             <button
               onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-              className="p-2 px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
-              title="Ganti Bahasa / Switch Language"
+              className="p-2 px-3.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
             >
               <Globe02Icon className="w-4 h-4 text-emerald-500" />
               <span className="font-bold">{language.toUpperCase()}</span>
             </button>
 
-            {/* Light / Dark Mode Sun & Moon Toggle */}
+            {/* Sun / Moon Light & Dark Toggle */}
             <button
               onClick={() => setIsDarkMode((prev) => !prev)}
               className="p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {isDarkMode ? (
                 <Sun01Icon className="w-4 h-4 text-amber-400" />
@@ -96,11 +91,11 @@ export default function LandingPage() {
             </Link>
           </div>
 
-          {/* Mobile Actions & Hamburger Button */}
+          {/* Mobile Action Controls */}
           <div className="flex md:hidden items-center gap-2">
             <button
               onClick={() => setIsDarkMode((prev) => !prev)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
+              className="p-2.5 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
             >
               {isDarkMode ? (
                 <Sun01Icon className="w-5 h-5 text-amber-400" />
@@ -111,8 +106,8 @@ export default function LandingPage() {
 
             <button
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
-              aria-label="Toggle Navigation Menu"
+              className="p-2.5 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
+              aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? (
                 <Cancel01Icon className="w-6 h-6" />
@@ -125,44 +120,43 @@ export default function LandingPage() {
 
         {/* Mobile Hamburger Drawer Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-neutral-900 pb-3">
-              <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">
-                Pilih Bahasa / Language
+          <div className="md:hidden border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 p-6 space-y-5 animate-in slide-in-from-top-2 duration-200">
+            {/* Language Selector */}
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800">
+              <span className="text-xs font-mono text-slate-600 dark:text-neutral-400 flex items-center gap-2">
+                <Globe02Icon className="w-4 h-4 text-emerald-500" />
+                {language === "id" ? "Bahasa Sistem" : "System Language"}
               </span>
               <button
                 onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-                className="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold"
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-mono text-xs font-bold shadow-sm"
               >
-                {language === "id" ? "Bahasa Indonesia (ID)" : "English (EN)"}
+                {language === "id" ? "ID (Indonesia)" : "EN (English)"}
               </button>
             </div>
 
-            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button variant="outline" size="md" className="w-full justify-start">
-                <Shield01Icon className="w-4 h-4 text-emerald-500" />
-                {t.adminConsole}
-              </Button>
-            </Link>
-            <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-              <Button variant="primary" size="md" className="w-full justify-start">
-                <Link01Icon className="w-4 h-4" />
-                {t.generateLink}
-              </Button>
-            </Link>
+            <div className="space-y-3 pt-1">
+              <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="outline" size="md" className="w-full justify-start py-3">
+                  <Shield01Icon className="w-4 h-4 text-emerald-500" />
+                  {t.adminConsole}
+                </Button>
+              </Link>
+              <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
+                <Button variant="primary" size="md" className="w-full justify-start py-3">
+                  <Link01Icon className="w-4 h-4" />
+                  {t.generateLink}
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
       </header>
 
-      {/* Main Hero & Bento Section */}
-      <main className="max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full flex-1 animate-in fade-in duration-500">
-        {/* Top Hero Heading */}
-        <div className="text-center max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-sans font-medium tracking-wide uppercase shadow-sm">
-            <CheckmarkCircle01Icon className="w-3.5 h-3.5 text-emerald-500" />
-            Integrity Protection for Forms
-          </div>
-
+      {/* Main Hero & Bento Section with Fade-Up Animation */}
+      <main className="max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full flex-1">
+        {/* Top Hero Heading (Fade Up Animation) */}
+        <div className="text-center max-w-3xl mx-auto space-y-6 animate-fade-up">
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-slate-900 dark:text-white leading-[1.15]">
             {language === "id" ? (
               <>
@@ -202,8 +196,8 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Bento Grid */}
-        <div id="bento-grid" className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
+        {/* Bento Grid with Delayed Fade Up Animation */}
+        <div id="bento-grid" className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 animate-fade-up-delayed">
           {/* Card 1: Tab-Switch Prevention */}
           <Card
             hoverEffect
@@ -260,8 +254,8 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="w-full aspect-square rounded-2xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950 flex items-center justify-center p-6 animate-float">
-              <div className="w-full h-full rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 flex flex-col items-center justify-center gap-3 shadow-md">
+            <div className="w-full aspect-square rounded-2xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950 flex items-center justify-center p-6">
+              <div className="w-full h-full rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 flex flex-col items-center justify-center gap-3 shadow-sm">
                 <QrCodeIcon className="w-16 h-16 text-emerald-600 dark:text-emerald-400 stroke-[1.2]" />
                 <span className="text-xs font-sans text-slate-500 dark:text-neutral-400">
                   Live Admin Generation
