@@ -46,7 +46,7 @@ function QuizContent() {
     setParticipantName(name);
     setIsNameGateOpen(false);
 
-    // Set grace period for 3 seconds after closing gate
+    // Initial grace period (3 seconds) to settle focus after starting
     isGracePeriodRef.current = true;
     setTimeout(() => {
       isGracePeriodRef.current = false;
@@ -70,7 +70,7 @@ function QuizContent() {
     }
   };
 
-  // Anti-Cheat Event Listeners with Debounce and Iframe Click Protection
+  // Anti-Cheat Event Listeners for Alt+Tab, App Switching, and Window Loss
   useEffect(() => {
     if (isNameGateOpen) return;
 
@@ -88,12 +88,11 @@ function QuizContent() {
     };
 
     const triggerViolation = () => {
-      // Ignore during initial grace period
       if (isGracePeriodRef.current) return;
 
-      // Debounce duplicate events within 2000ms (prevents double counting on tab switch)
+      // Debounce duplicate events within 1500ms
       const now = Date.now();
-      if (now - lastViolationTimeRef.current < 2000) return;
+      if (now - lastViolationTimeRef.current < 1500) return;
       lastViolationTimeRef.current = now;
 
       setViolationCount((prev) => {
@@ -104,38 +103,55 @@ function QuizContent() {
       setShowToast(true);
     };
 
-    // 1. Tab visibility change (document.hidden)
+    // 1. Tab switch, mobile home button, mobile app switch (visibilitychange)
     const handleVisibilityChange = () => {
-      if (document.hidden) {
+      if (document.hidden || document.visibilityState === "hidden") {
         triggerViolation();
       }
     };
 
-    // 2. Window blur handler (with iframe focus check)
+    // 2. Mobile app backgrounding / iOS Safari app switch (pagehide)
+    const handlePageHide = () => {
+      triggerViolation();
+    };
+
+    // 3. Alt+Tab / Window focus loss handler
     const handleWindowBlur = () => {
-      // Small timeout check to verify if blur was caused by clicking inside the iframe form
       setTimeout(() => {
-        const active = document.activeElement;
-        if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
-          // Focus moved to the form iframe (User is filling out form fields!) -> DO NOT TRIGGER VIOLATION
+        // If the browser tab or window is hidden -> Alt+Tab or Mobile App switch -> Violation!
+        if (document.hidden || document.visibilityState === "hidden") {
+          triggerViolation();
           return;
         }
-        // Focus actually left browser window or switched app
+
+        // If document lost window focus completely (Alt+Tab to another desktop app)
+        if (!document.hasFocus()) {
+          triggerViolation();
+          return;
+        }
+
+        // If active element is iframe AND document.hasFocus() is true, user is filling out the form inside browser -> OK
+        const active = document.activeElement;
+        if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
+          return;
+        }
+
+        // Otherwise, window lost focus
         triggerViolation();
       }, 150);
     };
 
-    // 3. Prevent context menu
+    // 4. Prevent context menu
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
 
-    // 4. Prevent copy, cut, paste
+    // 5. Prevent copy, cut, paste
     const handleCopyCutPaste = (e: ClipboardEvent) => {
       e.preventDefault();
     };
 
-    // 5. Intercept key combinations
+    // 6. Intercept keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
         e.key === "F12" ||
@@ -147,6 +163,7 @@ function QuizContent() {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
     window.addEventListener("blur", handleWindowBlur);
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("copy", handleCopyCutPaste);
@@ -156,6 +173,7 @@ function QuizContent() {
 
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("blur", handleWindowBlur);
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("copy", handleCopyCutPaste);
