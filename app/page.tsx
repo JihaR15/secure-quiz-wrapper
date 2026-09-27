@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,46 +15,103 @@ import {
   Shield01Icon,
   Menu01Icon,
   Cancel01Icon,
+  Sun01Icon,
+  Moon01Icon,
+  Globe02Icon,
 } from "hugeicons-react";
+import { Language, translations } from "@/lib/i18n";
 
 export default function LandingPage() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [language, setLanguage] = useState<Language>("id");
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+
+  const t = translations[language];
+
+  // Apply theme to document element
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDarkMode) {
+      root.classList.add("dark");
+      root.classList.remove("light");
+    } else {
+      root.classList.add("light");
+      root.classList.remove("dark");
+    }
+  }, [isDarkMode]);
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-neutral-950 text-neutral-100">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 transition-colors duration-300">
       {/* Navigation Header */}
-      <header className="w-full border-b border-neutral-900/80 bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40">
+      <header className="w-full border-b border-slate-200/80 dark:border-neutral-900/80 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+          {/* Logo & Brand Name */}
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-950 flex items-center justify-center font-bold shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-emerald-600/30">
               <Shield01Icon className="w-5 h-5 stroke-[2] shrink-0" />
             </div>
-            <span className="font-sans font-semibold text-lg tracking-tight truncate">
+            <span className="font-sans font-semibold text-lg tracking-tight truncate text-slate-900 dark:text-white">
               Secure Quiz Wrapper
             </span>
           </div>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation & Controls */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Language Switcher (Default ID) */}
+            <button
+              onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
+              className="p-2 px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
+              title="Ganti Bahasa / Switch Language"
+            >
+              <Globe02Icon className="w-4 h-4 text-emerald-500" />
+              <span className="font-bold">{language.toUpperCase()}</span>
+            </button>
+
+            {/* Light / Dark Mode Sun & Moon Toggle */}
+            <button
+              onClick={() => setIsDarkMode((prev) => !prev)}
+              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDarkMode ? (
+                <Sun01Icon className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon01Icon className="w-4 h-4 text-emerald-600" />
+              )}
+            </button>
+
+            <div className="h-4 w-px bg-slate-200 dark:bg-neutral-800" />
+
             <Link href="/admin">
               <Button variant="outline" size="sm">
-                <Shield01Icon className="w-4 h-4 text-neutral-400" />
-                Admin Console
+                <Shield01Icon className="w-4 h-4 text-emerald-500" />
+                {t.adminConsole}
               </Button>
             </Link>
             <Link href="/admin">
               <Button variant="primary" size="sm">
                 <Link01Icon className="w-4 h-4" />
-                Create Quiz Link
+                {t.generateLink}
               </Button>
             </Link>
           </div>
 
-          {/* Mobile Hamburger Button */}
-          <div className="flex md:hidden">
+          {/* Mobile Actions & Hamburger Button */}
+          <div className="flex md:hidden items-center gap-2">
+            <button
+              onClick={() => setIsDarkMode((prev) => !prev)}
+              className="p-2 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
+            >
+              {isDarkMode ? (
+                <Sun01Icon className="w-5 h-5 text-amber-400" />
+              ) : (
+                <Moon01Icon className="w-5 h-5 text-emerald-600" />
+              )}
+            </button>
+
             <button
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white"
+              className="p-2 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
               aria-label="Toggle Navigation Menu"
             >
               {isMobileMenuOpen ? (
@@ -68,17 +125,29 @@ export default function LandingPage() {
 
         {/* Mobile Hamburger Drawer Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-b border-neutral-800 bg-neutral-950/95 p-6 space-y-3 animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-neutral-900 pb-3">
+              <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">
+                Pilih Bahasa / Language
+              </span>
+              <button
+                onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
+                className="px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-mono text-xs font-bold"
+              >
+                {language === "id" ? "Bahasa Indonesia (ID)" : "English (EN)"}
+              </button>
+            </div>
+
             <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
               <Button variant="outline" size="md" className="w-full justify-start">
-                <Shield01Icon className="w-4 h-4 text-neutral-400" />
-                Admin Console
+                <Shield01Icon className="w-4 h-4 text-emerald-500" />
+                {t.adminConsole}
               </Button>
             </Link>
             <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
               <Button variant="primary" size="md" className="w-full justify-start">
                 <Link01Icon className="w-4 h-4" />
-                Create Quiz Link
+                {t.generateLink}
               </Button>
             </Link>
           </div>
@@ -86,32 +155,48 @@ export default function LandingPage() {
       </header>
 
       {/* Main Hero & Bento Section */}
-      <main className="max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full">
+      <main className="max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full flex-1 animate-in fade-in duration-500">
         {/* Top Hero Heading */}
         <div className="text-center max-w-3xl mx-auto space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-neutral-800 bg-neutral-900/60 text-neutral-400 text-xs font-sans tracking-wide uppercase">
-            <CheckmarkCircle01Icon className="w-3.5 h-3.5 text-neutral-200" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-sans font-medium tracking-wide uppercase shadow-sm">
+            <CheckmarkCircle01Icon className="w-3.5 h-3.5 text-emerald-500" />
             Integrity Protection for Forms
           </div>
 
-          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-white leading-[1.15]">
-            Controlled environment for Google and MS Forms.
+          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-slate-900 dark:text-white leading-[1.15]">
+            {language === "id" ? (
+              <>
+                Lingkungan Ujian Terkontrol untuk{" "}
+                <span className="text-emerald-600 dark:text-emerald-400 italic">
+                  Google & MS Forms
+                </span>
+                .
+              </>
+            ) : (
+              <>
+                Controlled assessment environment for{" "}
+                <span className="text-emerald-600 dark:text-emerald-400 italic">
+                  Google & MS Forms
+                </span>
+                .
+              </>
+            )}
           </h1>
 
-          <p className="font-sans text-neutral-400 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
-            Encapsulate standard form links into strict browser sessions. Prevent tab switching, right-clicking, and content copying with automated violation tracking.
+          <p className="font-sans text-slate-600 dark:text-neutral-400 text-base md:text-lg leading-relaxed max-w-2xl mx-auto">
+            {t.landingSub}
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/admin" className="w-full sm:w-auto">
               <Button variant="primary" size="lg" className="w-full sm:w-auto">
-                Generate Secure Link
+                {t.generateLink}
                 <ArrowRight01Icon className="w-5 h-5" />
               </Button>
             </Link>
             <a href="#bento-grid" className="w-full sm:w-auto">
               <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                Explore Features
+                {t.exploreFeatures}
               </Button>
             </a>
           </div>
@@ -119,115 +204,132 @@ export default function LandingPage() {
 
         {/* Bento Grid */}
         <div id="bento-grid" className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
-          {/* Card 1: Tab-Switch Prevention (Large 2-column card) */}
-          <Card hoverEffect className="md:col-span-2 flex flex-col justify-between space-y-8 bg-gradient-to-br from-neutral-900/80 via-neutral-900/40 to-neutral-950">
+          {/* Card 1: Tab-Switch Prevention */}
+          <Card
+            hoverEffect
+            className="md:col-span-2 flex flex-col justify-between space-y-8 bg-gradient-to-br from-white via-emerald-50/20 to-white dark:from-neutral-900/90 dark:via-neutral-900/40 dark:to-neutral-950"
+          >
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                 <ViewOffIcon className="w-6 h-6 stroke-[1.5]" />
               </div>
-              <h2 className="font-serif text-2xl md:text-3xl font-medium text-white">
-                Active Tab & Window Tracking
+              <h2 className="font-serif text-2xl md:text-3xl font-medium text-slate-900 dark:text-white">
+                {language === "id"
+                  ? "Pemantauan Tab & Jendela Aktif"
+                  : "Active Tab & Window Tracking"}
               </h2>
-              <p className="font-sans text-neutral-400 text-sm md:text-base leading-relaxed max-w-xl">
-                Real-time monitoring detects whenever a participant navigates away from the active tab or minimizes the browser window. Every focus lost event triggers an instant lock screen and increments the violation log.
+              <p className="font-sans text-slate-600 dark:text-neutral-400 text-sm md:text-base leading-relaxed max-w-xl">
+                {language === "id"
+                  ? "Sistem memantau secara real-time setiap kali peserta berpindah tab, membuka aplikasi lain di HP/laptop, atau meminimalkan browser. Notifikasi Toast langsung muncul dan pelanggaran dicatat ke database admin."
+                  : "Real-time monitoring detects whenever a participant navigates away from the active tab or minimizes the browser window. Toast alerts appear instantly and violations are logged."}
               </p>
             </div>
 
             {/* Visual Representation */}
-            <div className="w-full rounded-2xl border border-neutral-800 bg-neutral-950/80 p-5 space-y-3 font-mono text-xs">
-              <div className="flex items-center justify-between border-b border-neutral-900 pb-3">
-                <span className="text-neutral-500 font-sans">Security Event Stream</span>
-                <span className="px-2.5 py-0.5 rounded-md bg-red-950/60 border border-red-800/60 text-red-400 font-sans text-[11px] font-medium">
+            <div className="w-full rounded-2xl border border-slate-200 dark:border-neutral-800 bg-slate-900 text-slate-100 p-5 space-y-3 font-mono text-xs shadow-inner">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span className="text-slate-400 font-sans">Security Event Stream</span>
+                <span className="px-2.5 py-0.5 rounded-md bg-red-950/80 border border-red-800/80 text-red-400 font-sans text-[11px] font-medium">
                   Violation Detected
                 </span>
               </div>
-              <div className="flex items-center justify-between text-neutral-300">
+              <div className="flex items-center justify-between text-slate-300">
                 <span>[LOG] window_blur_event</span>
-                <span className="text-neutral-500">TIMESTAMP: 14:32:09</span>
+                <span className="text-slate-500">TIMESTAMP: 14:32:09</span>
               </div>
-              <div className="flex items-center justify-between text-neutral-400">
-                <span>[ACTION] Fullscreen lock overlay presented</span>
-                <span className="text-neutral-500">STATUS: Pending Acknowledgment</span>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>[ACTION] Non-blocking Toast Alert presented</span>
+                <span className="text-emerald-400">STATUS: Logged to Server</span>
               </div>
             </div>
           </Card>
 
           {/* Card 2: QR Code Distribution */}
-          <Card hoverEffect className="flex flex-col justify-between space-y-8 bg-neutral-900/60">
+          <Card hoverEffect className="flex flex-col justify-between space-y-8">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                 <QrCodeIcon className="w-6 h-6 stroke-[1.5]" />
               </div>
-              <h2 className="font-serif text-2xl font-medium text-white">
-                Instant QR Distribution
+              <h2 className="font-serif text-2xl font-medium text-slate-900 dark:text-white">
+                {language === "id" ? "Distribusi QR Code Instan" : "Instant QR Distribution"}
               </h2>
-              <p className="font-sans text-neutral-400 text-sm leading-relaxed">
-                Generate scannable QR codes for classroom or hall assessments directly from your form URL.
+              <p className="font-sans text-slate-600 dark:text-neutral-400 text-sm leading-relaxed">
+                {language === "id"
+                  ? "Buat QR Code siap scan untuk dibagikan di kelas atau ruang ujian dari link Google/MS Form Anda."
+                  : "Generate scannable QR codes for classroom or hall assessments directly from your form URL."}
               </p>
             </div>
 
-            <div className="w-full aspect-square rounded-2xl border border-neutral-800 bg-neutral-950/60 flex items-center justify-center p-6">
-              <div className="w-full h-full rounded-xl bg-neutral-900 border border-neutral-800 flex flex-col items-center justify-center gap-3">
-                <QrCodeIcon className="w-16 h-16 text-neutral-400 stroke-[1]" />
-                <span className="text-xs font-sans text-neutral-500">Live Admin Generation</span>
+            <div className="w-full aspect-square rounded-2xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950 flex items-center justify-center p-6 animate-float">
+              <div className="w-full h-full rounded-xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 flex flex-col items-center justify-center gap-3 shadow-md">
+                <QrCodeIcon className="w-16 h-16 text-emerald-600 dark:text-emerald-400 stroke-[1.2]" />
+                <span className="text-xs font-sans text-slate-500 dark:text-neutral-400">
+                  Live Admin Generation
+                </span>
               </div>
             </div>
           </Card>
 
           {/* Card 3: Clipboard & Context Lock */}
-          <Card hoverEffect className="flex flex-col justify-between space-y-6 bg-neutral-900/60">
+          <Card hoverEffect className="flex flex-col justify-between space-y-6">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Copy01Icon className="w-6 h-6 stroke-[1.5]" />
               </div>
-              <h2 className="font-serif text-2xl font-medium text-white">
-                Clipboard Interception
+              <h2 className="font-serif text-2xl font-medium text-slate-900 dark:text-white">
+                {language === "id" ? "Proteksi Salin & Klik Kanan" : "Clipboard Interception"}
               </h2>
-              <p className="font-sans text-neutral-400 text-sm leading-relaxed">
-                Prevents copy, paste, and right-click context menus throughout the assessment duration.
+              <p className="font-sans text-slate-600 dark:text-neutral-400 text-sm leading-relaxed">
+                {language === "id"
+                  ? "Mencegah aksi copy, paste, dan menu klik kanan selama sesi ujian berlangsung."
+                  : "Prevents copy, paste, and right-click context menus throughout the assessment duration."}
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl border border-neutral-800 bg-neutral-950/80 space-y-2 text-xs font-sans">
-              <div className="flex items-center justify-between text-neutral-400">
-                <span>Context Menu (Right Click)</span>
-                <span className="text-neutral-500 font-mono">BLOCKED</span>
+            <div className="p-4 rounded-2xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950 space-y-2 text-xs font-sans">
+              <div className="flex items-center justify-between text-slate-600 dark:text-neutral-400">
+                <span>Context Menu (Klik Kanan)</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">BLOCKED</span>
               </div>
-              <div className="flex items-center justify-between text-neutral-400">
+              <div className="flex items-center justify-between text-slate-600 dark:text-neutral-400">
                 <span>Clipboard Copy / Cut</span>
-                <span className="text-neutral-500 font-mono">BLOCKED</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">BLOCKED</span>
               </div>
-              <div className="flex items-center justify-between text-neutral-400">
+              <div className="flex items-center justify-between text-slate-600 dark:text-neutral-400">
                 <span>Clipboard Paste</span>
-                <span className="text-neutral-500 font-mono">BLOCKED</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">BLOCKED</span>
               </div>
             </div>
           </Card>
 
           {/* Card 4: Safe URL Wrapping */}
-          <Card hoverEffect className="md:col-span-2 flex flex-col justify-between space-y-8 bg-neutral-900/60">
+          <Card hoverEffect className="md:col-span-2 flex flex-col justify-between space-y-8">
             <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-neutral-800/80 border border-neutral-700/50 flex items-center justify-center text-neutral-100 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                 <Link01Icon className="w-6 h-6 stroke-[1.5]" />
               </div>
-              <h2 className="font-serif text-2xl md:text-3xl font-medium text-white">
-                Safe URL Wrapping & Parameter Enforcement
+              <h2 className="font-serif text-2xl md:text-3xl font-medium text-slate-900 dark:text-white">
+                {language === "id"
+                  ? "Pengodean URL & Pemasangan Parameter Otomatis"
+                  : "Safe URL Wrapping & Parameter Enforcement"}
               </h2>
-              <p className="font-sans text-neutral-400 text-sm md:text-base leading-relaxed max-w-xl">
-                Encodes form target parameters safely while automatically enforcing embedded view flags. Works seamlessly with Google Forms, Microsoft Forms, and standard Web quizes.
+              <p className="font-sans text-slate-600 dark:text-neutral-400 text-sm md:text-base leading-relaxed max-w-xl">
+                {language === "id"
+                  ? "Mengunci parameter formulir secara aman sambil menambahkan flag `?embedded=true` secara otomatis. Bekerja sempurna untuk Google Forms & Microsoft Forms."
+                  : "Encodes form target parameters safely while automatically enforcing embedded view flags. Works seamlessly with Google Forms and Microsoft Forms."}
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border border-neutral-800 bg-neutral-950/80">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-2xl border border-slate-200 dark:border-neutral-800 bg-slate-50 dark:bg-neutral-950">
               <div className="flex items-center gap-3 w-full overflow-hidden">
-                <CircleLock01Icon className="w-5 h-5 text-neutral-400 shrink-0" />
-                <span className="font-mono text-xs text-neutral-400 truncate">
+                <CircleLock01Icon className="w-5 h-5 text-emerald-500 shrink-0" />
+                <span className="font-mono text-xs text-slate-600 dark:text-neutral-400 truncate">
                   /quiz?form=aHR0cHM6Ly9kb2NzLmdvb2dsZS5jb20vZm9ybXMv...
                 </span>
               </div>
               <Link href="/admin" className="shrink-0 w-full sm:w-auto">
                 <Button variant="secondary" size="sm" className="w-full">
-                  Create Link
+                  {t.generateLink}
                 </Button>
               </Link>
             </div>
@@ -236,10 +338,10 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-neutral-900 bg-neutral-950 py-10">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs text-neutral-500">
+      <footer className="w-full border-t border-slate-200 dark:border-neutral-900 bg-white dark:bg-neutral-950 py-10 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs text-slate-500 dark:text-neutral-500">
           <div className="flex items-center gap-2">
-            <Shield01Icon className="w-4 h-4 text-neutral-400 shrink-0" />
+            <Shield01Icon className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>Secure Quiz Wrapper — Controlled Assessment System</span>
           </div>
           <div>All rights reserved. Standard browser enforcement protocols.</div>

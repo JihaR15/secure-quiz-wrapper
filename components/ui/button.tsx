@@ -14,17 +14,17 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseStyles =
-    "inline-flex items-center justify-center font-sans font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-neutral-400 focus:ring-offset-2 focus:ring-offset-neutral-950 disabled:opacity-50 disabled:cursor-not-allowed select-none";
+    "inline-flex items-center justify-center font-sans font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none";
 
   const variants = {
     primary:
-      "bg-neutral-100 text-neutral-950 hover:bg-white active:bg-neutral-200 rounded-2xl font-semibold shadow-md shadow-neutral-950/20",
+      "bg-emerald-600 text-white hover:bg-emerald-500 active:bg-emerald-700 rounded-2xl font-semibold shadow-lg shadow-emerald-600/25 dark:shadow-emerald-950/40 hover:-translate-y-0.5",
     secondary:
-      "bg-neutral-800 text-neutral-100 hover:bg-neutral-700 active:bg-neutral-800 rounded-2xl border border-neutral-700/50",
+      "bg-emerald-950/20 text-emerald-700 dark:bg-neutral-800 dark:text-emerald-400 hover:bg-emerald-900/30 dark:hover:bg-neutral-700 rounded-2xl border border-emerald-500/20 dark:border-neutral-700/50",
     outline:
-      "bg-transparent text-neutral-300 hover:text-white hover:bg-neutral-900 border border-neutral-800 rounded-2xl",
+      "bg-transparent text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-white hover:bg-emerald-50/50 dark:hover:bg-neutral-900 border border-slate-200 dark:border-neutral-800 rounded-2xl",
     danger:
-      "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 rounded-2xl shadow-lg shadow-red-950/40",
+      "bg-red-600 text-white hover:bg-red-500 active:bg-red-700 rounded-2xl shadow-lg shadow-red-950/30 hover:-translate-y-0.5",
   };
 
   const sizes = {
