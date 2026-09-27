@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Poppins } from "next/font/google";
+import { Playfair_Display, Geist } from "next/font/google";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -7,10 +7,9 @@ const playfair = Playfair_Display({
   subsets: ["latin"],
 });
 
-const poppins = Poppins({
-  variable: "--font-poppins",
+const geist = Geist({
+  variable: "--font-geist",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -26,9 +25,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${playfair.variable} ${poppins.variable} h-full antialiased`}
+      className={`${playfair.variable} ${geist.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans bg-neutral-950 text-neutral-100 max-w-[100vw] overflow-x-hidden">
+      <body className="min-h-full flex flex-col font-sans max-w-[100vw] overflow-x-hidden">
         {children}
       </body>
     </html>

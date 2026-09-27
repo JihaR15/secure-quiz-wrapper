@@ -4,7 +4,7 @@
 
 @theme inline {
   --font-serif: var(--font-playfair), serif;
-  --font-sans: var(--font-poppins), sans-serif;
+  --font-sans: var(--font-geist), sans-serif;
 }
 
 :root {
@@ -20,7 +20,7 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-poppins), sans-serif;
+  font-family: var(--font-geist), sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 

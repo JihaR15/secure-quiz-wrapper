@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Shield01Icon, Mail01Icon, LockIcon, ArrowRight01Icon, ArrowLeft01Icon, Sun01Icon, Moon01Icon } from "hugeicons-react";
+import { AmbientBackground } from "@/components/ui/ambient-background";
+import { Mail01Icon, LockIcon, ArrowRight01Icon, ArrowLeft01Icon, Sun01Icon, Moon01Icon } from "hugeicons-react";
 import { getInitialTheme, applyTheme, Theme } from "@/lib/theme";
 
 export default function AdminLoginPage() {
@@ -56,10 +58,12 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans p-6 transition-colors duration-300">
-      <div className="max-w-md w-full mx-auto flex items-center justify-between mb-6">
+    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans p-6 transition-colors duration-300">
+      <AmbientBackground />
+
+      <div className="relative z-10 max-w-md w-full mx-auto flex items-center justify-between mb-6">
         <Link href="/">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="h-10 px-3.5 text-xs font-semibold">
             <ArrowLeft01Icon className="w-4 h-4" />
             Kembali ke Beranda
           </Button>
@@ -67,20 +71,26 @@ export default function AdminLoginPage() {
 
         <button
           onClick={toggleTheme}
-          className="p-2.5 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm"
+          className="h-10 w-10 rounded-2xl bg-white dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shadow-sm flex items-center justify-center shrink-0"
         >
           {theme === "dark" ? (
-            <Sun01Icon className="w-4 h-4 text-amber-400" />
+            <Sun01Icon className="w-4 h-4 text-amber-400 shrink-0" />
           ) : (
-            <Moon01Icon className="w-4 h-4 text-emerald-600" />
+            <Moon01Icon className="w-4 h-4 text-emerald-600 shrink-0" />
           )}
         </button>
       </div>
 
-      <Card className="max-w-md w-full mx-auto p-8 space-y-6">
+      <Card className="relative z-10 max-w-md w-full mx-auto p-8 space-y-6">
         <div className="flex flex-col items-center text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
-            <Shield01Icon className="w-6 h-6 stroke-[2]" />
+          <div className="w-12 h-12 rounded-2xl bg-black border border-neutral-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+            <Image
+              src="/logo.png"
+              alt="SQW Logo"
+              width={48}
+              height={48}
+              className="w-full h-full object-contain"
+            />
           </div>
           <h1 className="font-serif text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">
             Login Portal Admin

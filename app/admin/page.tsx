@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 import {
   Shield01Icon,
   QrCodeIcon,
@@ -217,7 +219,6 @@ export default function AdminDashboardPage() {
     }
   };
 
-  // Extracts first name / nickname for navbar display
   const adminFirstName = adminName.trim().split(" ")[0] || adminName;
 
   if (loading) {
@@ -231,65 +232,72 @@ export default function AdminDashboardPage() {
   const selectedQuiz = quizzes.find((q) => q.id === selectedQuizId);
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans transition-colors duration-300">
+    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans transition-colors duration-300">
+      {/* React Bits Ambient Background */}
+      <AmbientBackground />
+
       {/* Header Bar */}
       <header className="w-full border-b border-slate-200 dark:border-neutral-900 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-2">
-          {/* Logo & Brand Name */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
-                <Shield01Icon className="w-5 h-5 stroke-[2]" />
-              </div>
-              <span className="font-sans font-semibold text-base sm:text-lg tracking-tight hidden sm:inline">
-                Secure Quiz Wrapper
-              </span>
-              <span className="font-sans font-bold text-sm tracking-tight inline sm:hidden text-emerald-600 dark:text-emerald-400">
-                SQW
-              </span>
-            </Link>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-3">
+          {/* Logo & Brand Image */}
+          <Link href="/" className="flex items-center gap-3 shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-black border border-neutral-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+              <Image
+                src="/logo.png"
+                alt="Secure Quiz Wrapper Logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <span className="font-sans font-semibold text-base sm:text-lg tracking-tight hidden sm:inline text-slate-900 dark:text-white">
+              Secure Quiz Wrapper
+            </span>
+            <span className="font-sans font-bold text-sm tracking-tight inline sm:hidden text-emerald-600 dark:text-emerald-400">
+              SQW
+            </span>
+          </Link>
 
-          {/* Controls & Logged-In Admin Nickname Badge */}
+          {/* Controls & Logged-In Admin Nickname Badge (Equalized h-10 Height) */}
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Logged-In Admin Nickname Badge */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300 max-w-[130px] sm:max-w-none truncate">
-              <UserIcon className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <div className="h-10 flex items-center gap-2 px-3 py-2 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300 max-w-[140px] sm:max-w-none truncate shrink-0">
+              <UserIcon className="w-4 h-4 text-emerald-500 shrink-0" />
               <span className="truncate font-semibold">{adminFirstName}</span>
             </div>
 
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className="p-2 sm:p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors shrink-0"
+              className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center shrink-0"
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? (
-                <Sun01Icon className="w-4 h-4 text-amber-400" />
+                <Sun01Icon className="w-4 h-4 text-amber-400 shrink-0" />
               ) : (
-                <Moon01Icon className="w-4 h-4 text-emerald-600" />
+                <Moon01Icon className="w-4 h-4 text-emerald-600 shrink-0" />
               )}
             </button>
 
             {/* Language Switcher */}
             <button
               onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-              className="p-2 sm:px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1 shrink-0"
+              className="h-10 px-3.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-1.5 shrink-0"
               title="Switch Language"
             >
-              <Globe02Icon className="w-3.5 h-3.5 text-emerald-500" />
+              <Globe02Icon className="w-4 h-4 text-emerald-500 shrink-0" />
               <span className="font-bold hidden sm:inline">{language.toUpperCase()}</span>
             </button>
 
             {/* Logout Button */}
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               onClick={handleLogout}
-              className="px-2.5 sm:px-4 shrink-0"
+              className="h-10 px-3.5 text-xs font-semibold shrink-0"
               title={t.logout}
             >
-              <Logout01Icon className="w-4 h-4" />
+              <Logout01Icon className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">{t.logout}</span>
             </Button>
           </div>
@@ -297,7 +305,7 @@ export default function AdminDashboardPage() {
       </header>
 
       {/* Main Admin Section */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8 sm:space-y-10 w-full flex-1">
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8 sm:space-y-10 w-full flex-1">
         {/* Admin Title Bar */}
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs uppercase tracking-wider font-medium">

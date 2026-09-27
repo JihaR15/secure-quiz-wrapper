@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AmbientBackground } from "@/components/ui/ambient-background";
 import {
   CircleLock01Icon,
   QrCodeIcon,
@@ -42,87 +44,97 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 transition-colors duration-300">
+    <div className="relative min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 transition-colors duration-300">
+      {/* React Bits Ambient Glow & Grid Background */}
+      <AmbientBackground />
+
       {/* Navigation Header */}
       <header className="w-full border-b border-slate-200/80 dark:border-neutral-900/80 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo & Brand Name (Flat clean icon, no glow) */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
-              <Shield01Icon className="w-5 h-5 stroke-[2] shrink-0" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between gap-3">
+          {/* Logo & Brand Image (Uploaded SQW Logo) */}
+          <Link href="/" className="flex items-center gap-3 shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-black border border-neutral-800 flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+              <Image
+                src="/logo.png"
+                alt="Secure Quiz Wrapper Logo"
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+              />
             </div>
-            <span className="font-sans font-semibold text-lg tracking-tight truncate text-slate-900 dark:text-white">
+            <span className="font-sans font-semibold text-base sm:text-lg tracking-tight truncate text-slate-900 dark:text-white">
               Secure Quiz Wrapper
             </span>
-          </div>
+          </Link>
 
-          {/* Desktop Controls */}
-          <div className="hidden md:flex items-center gap-3">
-            {/* Language Switcher */}
+          {/* Desktop Controls (Aligned to exact h-10 height) */}
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            {/* Language Switcher Button */}
             <button
               onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-              className="p-2 px-3.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
+              className="h-10 px-3.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center gap-1.5 shrink-0"
+              title="Switch Language"
             >
-              <Globe02Icon className="w-4 h-4 text-emerald-500" />
+              <Globe02Icon className="w-4 h-4 text-emerald-500 shrink-0" />
               <span className="font-bold">{language.toUpperCase()}</span>
             </button>
 
-            {/* Sun / Moon Light & Dark Toggle */}
+            {/* Sun / Moon Theme Button */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all flex items-center justify-center shrink-0"
               title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
               {theme === "dark" ? (
-                <Sun01Icon className="w-4 h-4 text-amber-400" />
+                <Sun01Icon className="w-4 h-4 text-amber-400 shrink-0" />
               ) : (
-                <Moon01Icon className="w-4 h-4 text-emerald-600" />
+                <Moon01Icon className="w-4 h-4 text-emerald-600 shrink-0" />
               )}
             </button>
 
-            <div className="h-4 w-px bg-slate-200 dark:bg-neutral-800" />
+            <div className="h-5 w-px bg-slate-200 dark:bg-neutral-800 shrink-0" />
 
-            {/* Navbar Action Buttons (No Icons) */}
+            {/* Navbar Action Buttons (Text-only, h-10 aligned) */}
             <Link href="/admin">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="md" className="h-10 px-4 text-xs font-semibold">
                 {t.adminConsole}
               </Button>
             </Link>
             <Link href="/admin">
-              <Button variant="primary" size="sm">
+              <Button variant="primary" size="md" className="h-10 px-4 text-xs font-semibold">
                 {t.generateLink}
               </Button>
             </Link>
           </div>
 
-          {/* Mobile Action Controls */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile Action Controls (Aligned to h-10) */}
+          <div className="flex md:hidden items-center gap-2 shrink-0">
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
+              className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 flex items-center justify-center shrink-0"
             >
               {theme === "dark" ? (
-                <Sun01Icon className="w-5 h-5 text-amber-400" />
+                <Sun01Icon className="w-5 h-5 text-amber-400 shrink-0" />
               ) : (
-                <Moon01Icon className="w-5 h-5 text-emerald-600" />
+                <Moon01Icon className="w-5 h-5 text-emerald-600 shrink-0" />
               )}
             </button>
 
             <button
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              className="p-2.5 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
+              className="h-10 w-10 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 flex items-center justify-center shrink-0"
               aria-label="Toggle Menu"
             >
               {isMobileMenuOpen ? (
-                <Cancel01Icon className="w-6 h-6" />
+                <Cancel01Icon className="w-5 h-5 shrink-0" />
               ) : (
-                <Menu01Icon className="w-6 h-6" />
+                <Menu01Icon className="w-5 h-5 shrink-0" />
               )}
             </button>
           </div>
         </div>
 
-        {/* Mobile Hamburger Drawer Menu with Generous Spacing */}
+        {/* Mobile Hamburger Drawer Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 p-6 space-y-6 animate-in slide-in-from-top-2 duration-200">
             {/* Language Selector */}
@@ -139,15 +151,15 @@ export default function LandingPage() {
               </button>
             </div>
 
-            {/* Mobile Navigation Buttons with Spacious Spacing */}
-            <div className="space-y-4 pt-2 ">
+            {/* Mobile Navigation Buttons */}
+            <div className="space-y-4 pt-2">
               <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="outline" size="md" className="w-full justify-center py-3.5 mb-2.5 text-sm">
+                <Button variant="outline" size="md" className="w-full h-12 justify-center text-sm">
                   {t.adminConsole}
                 </Button>
               </Link>
               <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="primary" size="md" className="w-full justify-center py-3.5 text-sm font-semibold">
+                <Button variant="primary" size="md" className="w-full h-12 justify-center text-sm font-semibold">
                   {t.generateLink}
                 </Button>
               </Link>
@@ -157,7 +169,7 @@ export default function LandingPage() {
       </header>
 
       {/* Main Hero & Bento Section with Fade-Up Animation */}
-      <main className="max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full flex-1">
+      <main className="relative z-10 max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full flex-1">
         {/* Top Hero Heading */}
         <div className="text-center max-w-3xl mx-auto space-y-6 animate-fade-up">
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-slate-900 dark:text-white leading-[1.15]">
@@ -335,10 +347,16 @@ export default function LandingPage() {
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-200 dark:border-neutral-900 bg-white dark:bg-neutral-950 py-10 transition-colors duration-300">
+      <footer className="relative z-10 w-full border-t border-slate-200 dark:border-neutral-900 bg-white dark:bg-neutral-950 py-10 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs text-slate-500 dark:text-neutral-500">
           <div className="flex items-center gap-2">
-            <Shield01Icon className="w-4 h-4 text-emerald-500 shrink-0" />
+            <Image
+              src="/logo.png"
+              alt="SQW Logo"
+              width={18}
+              height={18}
+              className="w-4.5 h-4.5 object-contain shrink-0"
+            />
             <span>Secure Quiz Wrapper — Controlled Assessment System</span>
           </div>
           <div>All rights reserved. Standard browser enforcement protocols.</div>
