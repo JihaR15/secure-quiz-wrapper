@@ -27,15 +27,19 @@ export default function LandingPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/admin">
-              <Button variant="outline" size="sm">
-                Admin Console
+              <Button variant="outline" size="sm" className="px-3 sm:px-4 text-xs sm:text-sm">
+                <Shield01Icon className="w-4 h-4 text-neutral-400" />
+                <span className="hidden sm:inline">Admin Console</span>
+                <span className="inline sm:hidden">Admin</span>
               </Button>
             </Link>
             <Link href="/admin">
-              <Button variant="primary" size="sm">
-                Create Quiz Link
+              <Button variant="primary" size="sm" className="px-3 sm:px-4 text-xs sm:text-sm">
+                <Link01Icon className="w-4 h-4" />
+                <span className="hidden sm:inline">Create Quiz Link</span>
+                <span className="inline sm:hidden">Buat Link</span>
               </Button>
             </Link>
           </div>
