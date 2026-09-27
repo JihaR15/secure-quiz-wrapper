@@ -1,0 +1,41 @@
+{
+  "admins": [
+    {
+      "id": "admin_1790512950512_12mt6x",
+      "email": "jiha@gmail.com",
+      "passwordHash": "$2b$10$FGMToJHaAeSFLEVaBo.AeeF79f0KUJmKz4yOUVwK.dtg4wGHlYFE6",
+      "name": "Jiha Ramdhan",
+      "createdAt": "2026-09-27T12:42:30.512Z"
+    }
+  ],
+  "quizzes": [
+    {
+      "id": "quiz_1790513008734_zw1rkt",
+      "adminId": "admin_1790512950512_12mt6x",
+      "title": "Phsycological Test",
+      "formUrl": "https://forms.cloud.microsoft/r/Wfy3srAFgW",
+      "encodedUrl": "aHR0cHM6Ly9mb3Jtcy5jbG91ZC5taWNyb3NvZnQvci9XZnkzc3JBRmdX",
+      "createdAt": "2026-09-27T12:43:28.734Z"
+    }
+  ],
+  "submissions": [
+    {
+      "id": "sub_1790513024161_wu6c8e",
+      "quizId": "quiz_1790513008734_zw1rkt",
+      "participantName": "Mahmud",
+      "violationCount": 2,
+      "status": "active",
+      "startedAt": "2026-09-27T12:43:44.161Z",
+      "lastActiveAt": "2026-09-27T12:43:57.065Z"
+    },
+    {
+      "id": "sub_1790513054366_kjutrt",
+      "quizId": "quiz_1790513008734_zw1rkt",
+      "participantName": "budi",
+      "violationCount": 20,
+      "status": "active",
+      "startedAt": "2026-09-27T12:44:14.366Z",
+      "lastActiveAt": "2026-09-27T12:48:19.196Z"
+    }
+  ]
+}

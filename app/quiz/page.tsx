@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { decodeFormUrl } from "@/lib/url";
-import { ViolationModal } from "@/components/quiz/violation-modal";
+import { ViolationToast } from "@/components/quiz/violation-toast";
 import { SecurityBadge } from "@/components/quiz/violation-badge";
 import { NameGateModal } from "@/components/quiz/name-gate-modal";
 import { Card } from "@/components/ui/card";
@@ -23,7 +23,11 @@ function QuizContent() {
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [isNameGateOpen, setIsNameGateOpen] = useState<boolean>(true);
   const [violationCount, setViolationCount] = useState<number>(0);
-  const [isBlocked, setIsBlocked] = useState<boolean>(false);
+  const [showToast, setShowToast] = useState<boolean>(false);
+
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const lastViolationTimeRef = useRef<number>(0);
+  const isGracePeriodRef = useRef<boolean>(true);
 
   const t = translations[language];
 
@@ -42,6 +46,12 @@ function QuizContent() {
     setParticipantName(name);
     setIsNameGateOpen(false);
 
+    // Set grace period for 3 seconds after closing gate
+    isGracePeriodRef.current = true;
+    setTimeout(() => {
+      isGracePeriodRef.current = false;
+    }, 3000);
+
     try {
       const res = await fetch("/api/submissions", {
         method: "POST",
@@ -56,11 +66,11 @@ function QuizContent() {
         setSubmissionId(data.submission.id);
       }
     } catch {
-      // Offline fallback
+      // Fallback
     }
   };
 
-  // Anti-Cheat Event Listeners
+  // Anti-Cheat Event Listeners with Debounce and Iframe Click Protection
   useEffect(() => {
     if (isNameGateOpen) return;
 
@@ -78,32 +88,54 @@ function QuizContent() {
     };
 
     const triggerViolation = () => {
+      // Ignore during initial grace period
+      if (isGracePeriodRef.current) return;
+
+      // Debounce duplicate events within 2000ms (prevents double counting on tab switch)
+      const now = Date.now();
+      if (now - lastViolationTimeRef.current < 2000) return;
+      lastViolationTimeRef.current = now;
+
       setViolationCount((prev) => {
         const next = prev + 1;
         syncViolation(next);
         return next;
       });
-      setIsBlocked(true);
+      setShowToast(true);
     };
 
+    // 1. Tab visibility change (document.hidden)
     const handleVisibilityChange = () => {
       if (document.hidden) {
         triggerViolation();
       }
     };
 
+    // 2. Window blur handler (with iframe focus check)
     const handleWindowBlur = () => {
-      triggerViolation();
+      // Small timeout check to verify if blur was caused by clicking inside the iframe form
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
+          // Focus moved to the form iframe (User is filling out form fields!) -> DO NOT TRIGGER VIOLATION
+          return;
+        }
+        // Focus actually left browser window or switched app
+        triggerViolation();
+      }, 150);
     };
 
+    // 3. Prevent context menu
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
 
+    // 4. Prevent copy, cut, paste
     const handleCopyCutPaste = (e: ClipboardEvent) => {
       e.preventDefault();
     };
 
+    // 5. Intercept key combinations
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
         e.key === "F12" ||
@@ -133,13 +165,9 @@ function QuizContent() {
     };
   }, [isNameGateOpen, submissionId]);
 
-  const handleAcknowledge = () => {
-    setIsBlocked(false);
-  };
-
   return (
     <div className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans">
-      {/* Name Registration Modal Gate */}
+      {/* Name Registration & Rules Modal Gate */}
       <NameGateModal
         isOpen={isNameGateOpen}
         language={language}
@@ -160,9 +188,18 @@ function QuizContent() {
         </div>
       )}
 
+      {/* Non-intrusive Violation Toast Notification */}
+      <ViolationToast
+        show={showToast}
+        violationCount={violationCount}
+        onClose={() => setShowToast(false)}
+        language={language}
+      />
+
       {/* Embedded Quiz Iframe */}
       {targetUrl && !isNameGateOpen ? (
         <iframe
+          ref={iframeRef}
           src={targetUrl}
           className="w-full h-full border-0 bg-white"
           title="Secure Assessment Session"
@@ -193,13 +230,6 @@ function QuizContent() {
           </Card>
         </div>
       )}
-
-      {/* Strict Violation Warning Modal Overlay */}
-      <ViolationModal
-        isOpen={isBlocked}
-        violationCount={violationCount}
-        onAcknowledge={handleAcknowledge}
-      />
     </div>
   );
 }
