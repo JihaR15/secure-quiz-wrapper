@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedAdmin } from "@/lib/auth";
 import {
   createSubmission,
   updateSubmissionViolations,
+  deleteSubmission,
   Submission,
 } from "@/lib/db";
 
@@ -62,6 +64,40 @@ export async function PATCH(request: Request) {
   } catch {
     return NextResponse.json(
       { error: "Gagal memperbarui data pelanggaran." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const submissionId = searchParams.get("id");
+
+    if (!submissionId) {
+      return NextResponse.json(
+        { error: "Submission ID required" },
+        { status: 400 }
+      );
+    }
+
+    const success = deleteSubmission(submissionId);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Data peserta tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch {
+    return NextResponse.json(
+      { error: "Gagal menghapus data peserta." },
       { status: 500 }
     );
   }

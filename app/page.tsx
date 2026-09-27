@@ -19,23 +19,27 @@ import {
   Globe02Icon,
 } from "hugeicons-react";
 import { Language, translations } from "@/lib/i18n";
+import { getInitialTheme, applyTheme, Theme } from "@/lib/theme";
 
 export default function LandingPage() {
   const [language, setLanguage] = useState<Language>("id");
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [theme, setTheme] = useState<Theme>("dark");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   const t = translations[language];
 
-  // Apply dark mode class to document.documentElement
+  // Initialize theme from localStorage or system preference
   useEffect(() => {
-    const root = document.documentElement;
-    if (isDarkMode) {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-  }, [isDarkMode]);
+    const initial = getInitialTheme();
+    setTheme(initial);
+    applyTheme(initial);
+  }, []);
+
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+  };
 
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 transition-colors duration-300">
@@ -65,10 +69,11 @@ export default function LandingPage() {
 
             {/* Sun / Moon Light & Dark Toggle */}
             <button
-              onClick={() => setIsDarkMode((prev) => !prev)}
+              onClick={toggleTheme}
               className="p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              {isDarkMode ? (
+              {theme === "dark" ? (
                 <Sun01Icon className="w-4 h-4 text-amber-400" />
               ) : (
                 <Moon01Icon className="w-4 h-4 text-emerald-600" />
@@ -77,15 +82,14 @@ export default function LandingPage() {
 
             <div className="h-4 w-px bg-slate-200 dark:bg-neutral-800" />
 
+            {/* Navbar Action Buttons (No Icons) */}
             <Link href="/admin">
               <Button variant="outline" size="sm">
-                <Shield01Icon className="w-4 h-4 text-emerald-500" />
                 {t.adminConsole}
               </Button>
             </Link>
             <Link href="/admin">
               <Button variant="primary" size="sm">
-                <Link01Icon className="w-4 h-4" />
                 {t.generateLink}
               </Button>
             </Link>
@@ -94,10 +98,10 @@ export default function LandingPage() {
           {/* Mobile Action Controls */}
           <div className="flex md:hidden items-center gap-2">
             <button
-              onClick={() => setIsDarkMode((prev) => !prev)}
+              onClick={toggleTheme}
               className="p-2.5 rounded-xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
             >
-              {isDarkMode ? (
+              {theme === "dark" ? (
                 <Sun01Icon className="w-5 h-5 text-amber-400" />
               ) : (
                 <Moon01Icon className="w-5 h-5 text-emerald-600" />
@@ -118,33 +122,32 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Mobile Hamburger Drawer Menu */}
+        {/* Mobile Hamburger Drawer Menu with Generous Spacing */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 p-6 space-y-5 animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden border-b border-slate-200 dark:border-neutral-800 bg-white/95 dark:bg-neutral-950/95 p-6 space-y-6 animate-in slide-in-from-top-2 duration-200">
             {/* Language Selector */}
-            <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800">
+            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800">
               <span className="text-xs font-mono text-slate-600 dark:text-neutral-400 flex items-center gap-2">
                 <Globe02Icon className="w-4 h-4 text-emerald-500" />
                 {language === "id" ? "Bahasa Sistem" : "System Language"}
               </span>
               <button
                 onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-mono text-xs font-bold shadow-sm"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 text-white font-mono text-xs font-bold shadow-sm"
               >
                 {language === "id" ? "ID (Indonesia)" : "EN (English)"}
               </button>
             </div>
 
-            <div className="space-y-3 pt-1">
+            {/* Mobile Navigation Buttons with Spacious Spacing */}
+            <div className="space-y-4 pt-2">
               <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="outline" size="md" className="w-full justify-start py-3">
-                  <Shield01Icon className="w-4 h-4 text-emerald-500" />
+                <Button variant="outline" size="md" className="w-full justify-center py-3.5 text-sm">
                   {t.adminConsole}
                 </Button>
               </Link>
               <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)}>
-                <Button variant="primary" size="md" className="w-full justify-start py-3">
-                  <Link01Icon className="w-4 h-4" />
+                <Button variant="primary" size="md" className="w-full justify-center py-3.5 text-sm font-semibold">
                   {t.generateLink}
                 </Button>
               </Link>
@@ -155,7 +158,7 @@ export default function LandingPage() {
 
       {/* Main Hero & Bento Section with Fade-Up Animation */}
       <main className="max-w-7xl mx-auto px-6 py-16 md:py-24 space-y-16 w-full flex-1">
-        {/* Top Hero Heading (Fade Up Animation) */}
+        {/* Top Hero Heading */}
         <div className="text-center max-w-3xl mx-auto space-y-6 animate-fade-up">
           <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-slate-900 dark:text-white leading-[1.15]">
             {language === "id" ? (
@@ -196,7 +199,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Bento Grid with Delayed Fade Up Animation */}
+        {/* Bento Grid */}
         <div id="bento-grid" className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8 animate-fade-up-delayed">
           {/* Card 1: Tab-Switch Prevention */}
           <Card

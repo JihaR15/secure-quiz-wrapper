@@ -14,15 +14,17 @@ import {
   CheckmarkCircle01Icon,
   ArrowRight01Icon,
   Link01Icon,
-  ArrowLeft01Icon,
-  AlertCircleIcon,
   Download01Icon,
   UserIcon,
   Logout01Icon,
   Globe02Icon,
   Delete02Icon,
+  Sun01Icon,
+  Moon01Icon,
+  AlertCircleIcon,
 } from "hugeicons-react";
 import { Language, translations } from "@/lib/i18n";
+import { getInitialTheme, applyTheme, Theme } from "@/lib/theme";
 
 interface Submission {
   id: string;
@@ -46,6 +48,7 @@ interface Quiz {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [language, setLanguage] = useState<Language>("id");
+  const [theme, setTheme] = useState<Theme>("dark");
   const [adminName, setAdminName] = useState<string>("");
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -65,9 +68,17 @@ export default function AdminDashboardPage() {
     if (typeof window !== "undefined") {
       setOrigin(window.location.origin);
     }
+    const initialTheme = getInitialTheme();
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
   }, []);
 
-  // Fetch admin session and quizzes
+  const toggleTheme = () => {
+    const next: Theme = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    applyTheme(next);
+  };
+
   const loadDashboardData = async () => {
     try {
       const meRes = await fetch("/api/auth/me");
@@ -166,6 +177,29 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleDeleteSubmission = async (submissionId: string) => {
+    if (
+      !confirm(
+        language === "id"
+          ? "Apakah Anda yakin ingin menghapus catatan peserta ini?"
+          : "Are you sure you want to delete this participant record?"
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/submissions?id=${submissionId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        loadDashboardData();
+      }
+    } catch {
+      // Error handling
+    }
+  };
+
   const getQuizFullUrl = (quiz: Quiz) => {
     return origin
       ? `${origin}/quiz?form=${quiz.encodedUrl}&id=${quiz.id}`
@@ -179,13 +213,13 @@ export default function AdminDashboardPage() {
       setCopiedId(quiz.id);
       setTimeout(() => setCopiedId(null), 2500);
     } catch {
-      // Copy error fallback
+      // Fallback
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen w-screen bg-neutral-950 flex items-center justify-center text-neutral-400 font-sans text-sm">
+      <div className="min-h-screen w-screen bg-slate-50 dark:bg-neutral-950 flex items-center justify-center text-slate-500 dark:text-neutral-400 font-sans text-sm">
         Memuat Dashboard Admin...
       </div>
     );
@@ -194,13 +228,13 @@ export default function AdminDashboardPage() {
   const selectedQuiz = quizzes.find((q) => q.id === selectedQuizId);
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-neutral-950 text-neutral-100 font-sans">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden flex flex-col justify-between bg-slate-50 dark:bg-neutral-950 text-slate-900 dark:text-neutral-100 font-sans transition-colors duration-300">
       {/* Header Bar */}
-      <header className="w-full border-b border-neutral-900 bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40">
+      <header className="w-full border-b border-slate-200 dark:border-neutral-900 bg-white/80 dark:bg-neutral-950/80 backdrop-blur-md sticky top-0 z-40 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-950 flex items-center justify-center font-bold">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
                 <Shield01Icon className="w-5 h-5 stroke-[2]" />
               </div>
               <span className="font-sans font-semibold text-lg tracking-tight">
@@ -210,16 +244,29 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme Toggle Button */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {theme === "dark" ? (
+                <Sun01Icon className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon01Icon className="w-4 h-4 text-emerald-600" />
+              )}
+            </button>
+
             <button
               onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-              className="p-2 px-3 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs font-mono text-neutral-300 hover:text-white transition-colors flex items-center gap-1.5"
+              className="p-2 px-3 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs font-mono text-slate-700 dark:text-neutral-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex items-center gap-1.5"
             >
-              <Globe02Icon className="w-3.5 h-3.5 text-neutral-400" />
+              <Globe02Icon className="w-3.5 h-3.5 text-emerald-500" />
               {language.toUpperCase()}
             </button>
 
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300">
-              <UserIcon className="w-4 h-4 text-neutral-400" />
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-slate-100 dark:bg-neutral-900 border border-slate-200 dark:border-neutral-800 text-xs text-slate-700 dark:text-neutral-300">
+              <UserIcon className="w-4 h-4 text-emerald-500" />
               <span>{adminName}</span>
             </div>
 
@@ -235,22 +282,22 @@ export default function AdminDashboardPage() {
       <main className="max-w-7xl mx-auto px-6 py-10 space-y-10 w-full flex-1">
         {/* Admin Title Bar */}
         <div className="space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-neutral-800 bg-neutral-900/60 text-neutral-400 text-xs uppercase tracking-wider">
-            <QrCodeIcon className="w-3.5 h-3.5 text-neutral-200" />
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs uppercase tracking-wider font-medium">
+            <QrCodeIcon className="w-3.5 h-3.5" />
             {t.adminConsole}
           </div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-white tracking-tight">
+          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-slate-900 dark:text-white tracking-tight">
             Dashboard Pengawas Ujian
           </h1>
-          <p className="text-neutral-400 text-sm max-w-2xl">
-            Kelola kuis terisolasi Anda, lihat riwayat peserta beserta catatan pelanggarannya, dan unduh laporan Excel.
+          <p className="text-slate-600 dark:text-neutral-400 text-sm max-w-2xl">
+            Kelola kuis terisolasi Anda, lihat riwayat peserta beserta catatan pelanggarannya, hapus data jika diperlukan, dan unduh laporan Excel.
           </p>
         </div>
 
         {/* Top Form: Create New Quiz */}
-        <Card className="bg-neutral-900/50 space-y-6">
-          <h2 className="font-serif text-xl font-semibold text-white flex items-center gap-2">
-            <Link01Icon className="w-5 h-5 text-neutral-400" />
+        <Card className="space-y-6">
+          <h2 className="font-serif text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+            <Link01Icon className="w-5 h-5 text-emerald-500" />
             {t.generateQuiz}
           </h2>
 
@@ -285,13 +332,13 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: My Quizzes List (4 Cols) */}
           <div className="lg:col-span-4 space-y-4">
-            <h3 className="font-serif text-lg font-medium text-white flex items-center justify-between">
+            <h3 className="font-serif text-lg font-medium text-slate-900 dark:text-white flex items-center justify-between">
               <span>{t.myQuizzes}</span>
-              <span className="text-xs font-mono text-neutral-400">({quizzes.length})</span>
+              <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">({quizzes.length})</span>
             </h3>
 
             {quizzes.length === 0 ? (
-              <Card className="bg-neutral-900/30 text-center p-6 text-xs text-neutral-500">
+              <Card className="text-center p-6 text-xs text-slate-500 dark:text-neutral-500">
                 Belum ada kuis yang dibuat. Gunakan formulir di atas untuk membuat kuis pertama Anda.
               </Card>
             ) : (
@@ -307,16 +354,16 @@ export default function AdminDashboardPage() {
                       onClick={() => setSelectedQuizId(q.id)}
                       className={`p-4 rounded-2xl border transition-all cursor-pointer space-y-3 ${
                         isSelected
-                          ? "bg-neutral-900 border-neutral-700 shadow-lg"
-                          : "bg-neutral-900/40 border-neutral-800/80 hover:bg-neutral-900/70"
+                          ? "bg-white dark:bg-neutral-900 border-emerald-500/50 shadow-lg shadow-emerald-500/10"
+                          : "bg-white/60 dark:bg-neutral-900/40 border-slate-200 dark:border-neutral-800/80 hover:bg-slate-100 dark:hover:bg-neutral-900/70"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <h4 className="font-semibold text-sm text-neutral-100 line-clamp-1">
+                          <h4 className="font-semibold text-sm text-slate-900 dark:text-neutral-100 line-clamp-1">
                             {q.title}
                           </h4>
-                          <span className="text-[11px] text-neutral-500 font-mono">
+                          <span className="text-[11px] text-slate-500 dark:text-neutral-500 font-mono">
                             {new Date(q.createdAt).toLocaleDateString("id-ID")}
                           </span>
                         </div>
@@ -325,16 +372,16 @@ export default function AdminDashboardPage() {
                             e.stopPropagation();
                             handleDeleteQuiz(q.id);
                           }}
-                          className="text-neutral-500 hover:text-red-400 p-1 transition-colors"
+                          className="text-slate-400 dark:text-neutral-500 hover:text-red-500 p-1 transition-colors"
                           title="Hapus Kuis"
                         >
                           <Delete02Icon className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between text-xs text-neutral-400 font-mono pt-1">
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-neutral-400 font-mono pt-1">
                         <span>{submissionCount} Peserta</span>
-                        <span className={totalViolations > 0 ? "text-red-400 font-bold" : "text-neutral-500"}>
+                        <span className={totalViolations > 0 ? "text-red-500 font-bold" : "text-slate-500 dark:text-neutral-500"}>
                           {totalViolations} Pelanggaran
                         </span>
                       </div>
@@ -349,13 +396,13 @@ export default function AdminDashboardPage() {
           <div className="lg:col-span-8 space-y-6">
             {selectedQuiz ? (
               <>
-                <Card className="bg-neutral-900/60 space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
+                <Card className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-neutral-800 pb-4">
                     <div>
-                      <span className="text-xs uppercase tracking-wider text-neutral-400">
+                      <span className="text-xs uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                         Kuis Terpilih
                       </span>
-                      <h3 className="font-serif text-2xl font-medium text-white">
+                      <h3 className="font-serif text-2xl font-medium text-slate-900 dark:text-white">
                         {selectedQuiz.title}
                       </h3>
                     </div>
@@ -375,10 +422,10 @@ export default function AdminDashboardPage() {
                   {/* Shareable Link & QR Code Display */}
                   <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
                     <div className="md:col-span-8 space-y-3">
-                      <label className="text-xs font-medium text-neutral-300">
+                      <label className="text-xs font-medium text-slate-700 dark:text-neutral-300">
                         Link Akses Peserta (Dengan Proteksi Anti-Cheat)
                       </label>
-                      <p className="font-mono text-xs text-neutral-200 break-all bg-neutral-950 p-3 rounded-xl border border-neutral-800 select-all">
+                      <p className="font-mono text-xs text-slate-800 dark:text-neutral-200 break-all bg-slate-100 dark:bg-neutral-950 p-3 rounded-xl border border-slate-200 dark:border-neutral-800 select-all">
                         {getQuizFullUrl(selectedQuiz)}
                       </p>
                       <div className="flex items-center gap-3">
@@ -389,7 +436,7 @@ export default function AdminDashboardPage() {
                         >
                           {copiedId === selectedQuiz.id ? (
                             <>
-                              <CheckmarkCircle01Icon className="w-4 h-4 text-emerald-400" />
+                              <CheckmarkCircle01Icon className="w-4 h-4 text-emerald-500" />
                               Link Tersalin
                             </>
                           ) : (
@@ -412,15 +459,15 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-neutral-950 rounded-2xl border border-neutral-800">
+                    <div className="md:col-span-4 flex flex-col items-center justify-center p-4 bg-slate-100 dark:bg-neutral-950 rounded-2xl border border-slate-200 dark:border-neutral-800">
                       <QRCodeSVG
                         value={getQuizFullUrl(selectedQuiz)}
                         size={130}
-                        bgColor="#09090b"
-                        fgColor="#f5f5f5"
+                        bgColor="transparent"
+                        fgColor={theme === "dark" ? "#f5f5f5" : "#0f172a"}
                         level="H"
                       />
-                      <span className="text-[11px] font-mono text-neutral-500 mt-2">
+                      <span className="text-[11px] font-mono text-slate-500 dark:text-neutral-500 mt-2">
                         Scan QR Code
                       </span>
                     </div>
@@ -428,51 +475,52 @@ export default function AdminDashboardPage() {
                 </Card>
 
                 {/* Participant Submissions & Violations Table */}
-                <Card className="bg-neutral-900/40 space-y-4">
+                <Card className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-serif text-lg font-medium text-white flex items-center gap-2">
-                      <UserIcon className="w-4 h-4 text-neutral-400" />
+                    <h4 className="font-serif text-lg font-medium text-slate-900 dark:text-white flex items-center gap-2">
+                      <UserIcon className="w-4 h-4 text-emerald-500" />
                       {t.participantResults}
                     </h4>
-                    <span className="text-xs font-mono text-neutral-400">
+                    <span className="text-xs font-mono text-slate-500 dark:text-neutral-400">
                       Total: {selectedQuiz.submissions.length} Peserta
                     </span>
                   </div>
 
                   {selectedQuiz.submissions.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-neutral-500 border border-dashed border-neutral-800 rounded-2xl">
+                    <div className="p-8 text-center text-xs text-slate-500 dark:text-neutral-500 border border-dashed border-slate-200 dark:border-neutral-800 rounded-2xl">
                       {t.noParticipants}
                     </div>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs font-sans">
-                        <thead className="bg-neutral-950 border-b border-neutral-800 text-neutral-400 uppercase text-[10px] font-mono tracking-wider">
+                        <thead className="bg-slate-100 dark:bg-neutral-950 border-b border-slate-200 dark:border-neutral-800 text-slate-500 dark:text-neutral-400 uppercase text-[10px] font-mono tracking-wider">
                           <tr>
                             <th className="p-3 pl-4">No.</th>
                             <th className="p-3">{t.participantName}</th>
                             <th className="p-3">{t.violations}</th>
                             <th className="p-3">{t.status}</th>
                             <th className="p-3">{t.startedAt}</th>
-                            <th className="p-3 pr-4">{t.lastActive}</th>
+                            <th className="p-3">{t.lastActive}</th>
+                            <th className="p-3 pr-4 text-right">Aksi</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-neutral-800/60">
+                        <tbody className="divide-y divide-slate-200/60 dark:divide-neutral-800/60">
                           {selectedQuiz.submissions.map((sub, idx) => {
                             const hasViolation = sub.violationCount > 0;
                             const highRisk = sub.violationCount >= 5;
 
                             return (
-                              <tr key={sub.id} className="hover:bg-neutral-900/80 transition-colors">
-                                <td className="p-3 pl-4 font-mono text-neutral-500">{idx + 1}</td>
-                                <td className="p-3 font-semibold text-neutral-100">
+                              <tr key={sub.id} className="hover:bg-slate-50 dark:hover:bg-neutral-900/80 transition-colors">
+                                <td className="p-3 pl-4 font-mono text-slate-400 dark:text-neutral-500">{idx + 1}</td>
+                                <td className="p-3 font-semibold text-slate-900 dark:text-neutral-100">
                                   {sub.participantName}
                                 </td>
                                 <td className="p-3 font-mono font-bold">
                                   <span
                                     className={`px-2.5 py-1 rounded-lg border text-xs ${
                                       hasViolation
-                                        ? "bg-red-950/80 border-red-800/80 text-red-400"
-                                        : "bg-neutral-950 border-neutral-800 text-neutral-300"
+                                        ? "bg-red-500/10 border-red-500/30 text-red-500"
+                                        : "bg-slate-100 dark:bg-neutral-950 border-slate-200 dark:border-neutral-800 text-slate-700 dark:text-neutral-300"
                                     }`}
                                   >
                                     {sub.violationCount}
@@ -480,30 +528,39 @@ export default function AdminDashboardPage() {
                                 </td>
                                 <td className="p-3">
                                   {highRisk ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-red-950 border border-red-800 text-red-400 text-[11px] font-medium">
+                                    <span className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-500 text-[11px] font-medium">
                                       {t.riskHigh}
                                     </span>
                                   ) : hasViolation ? (
-                                    <span className="px-2 py-0.5 rounded-full bg-amber-950 border border-amber-800 text-amber-400 text-[11px] font-medium">
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[11px] font-medium">
                                       {t.riskWarning}
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-800 text-emerald-400 text-[11px] font-medium">
+                                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
                                       {t.riskNormal}
                                     </span>
                                   )}
                                 </td>
-                                <td className="p-3 font-mono text-neutral-400">
+                                <td className="p-3 font-mono text-slate-500 dark:text-neutral-400">
                                   {new Date(sub.startedAt).toLocaleTimeString("id-ID", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                   })}
                                 </td>
-                                <td className="p-3 pr-4 font-mono text-neutral-400">
+                                <td className="p-3 font-mono text-slate-500 dark:text-neutral-400">
                                   {new Date(sub.lastActiveAt).toLocaleTimeString("id-ID", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                   })}
+                                </td>
+                                <td className="p-3 pr-4 text-right">
+                                  <button
+                                    onClick={() => handleDeleteSubmission(sub.id)}
+                                    className="p-1.5 rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                                    title="Hapus Data Peserta"
+                                  >
+                                    <Delete02Icon className="w-4 h-4" />
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -515,8 +572,8 @@ export default function AdminDashboardPage() {
                 </Card>
               </>
             ) : (
-              <Card className="bg-neutral-900/30 p-12 text-center text-sm text-neutral-400 space-y-3">
-                <AlertCircleIcon className="w-8 h-8 text-neutral-500 mx-auto" />
+              <Card className="p-12 text-center text-sm text-slate-500 dark:text-neutral-400 space-y-3">
+                <AlertCircleIcon className="w-8 h-8 text-slate-400 dark:text-neutral-500 mx-auto" />
                 <p>Pilih kuis dari daftar di sebelah kiri untuk melihat QR Code dan hasil pelanggaran peserta.</p>
               </Card>
             )}

@@ -20,42 +20,6 @@
   ],
   "submissions": [
     {
-      "id": "sub_1790513024161_wu6c8e",
-      "quizId": "quiz_1790513008734_zw1rkt",
-      "participantName": "Mahmud",
-      "violationCount": 2,
-      "status": "active",
-      "startedAt": "2026-09-27T12:43:44.161Z",
-      "lastActiveAt": "2026-09-27T12:43:57.065Z"
-    },
-    {
-      "id": "sub_1790513054366_kjutrt",
-      "quizId": "quiz_1790513008734_zw1rkt",
-      "participantName": "budi",
-      "violationCount": 20,
-      "status": "active",
-      "startedAt": "2026-09-27T12:44:14.366Z",
-      "lastActiveAt": "2026-09-27T12:48:19.196Z"
-    },
-    {
-      "id": "sub_1790514558799_ssahx4",
-      "quizId": "quiz_1790513008734_zw1rkt",
-      "participantName": "amba",
-      "violationCount": 1,
-      "status": "active",
-      "startedAt": "2026-09-27T13:09:18.798Z",
-      "lastActiveAt": "2026-09-27T13:09:20.329Z"
-    },
-    {
-      "id": "sub_1790514671474_4lnhi1",
-      "quizId": "quiz_1790513008734_zw1rkt",
-      "participantName": "fix",
-      "violationCount": 2,
-      "status": "active",
-      "startedAt": "2026-09-27T13:11:11.474Z",
-      "lastActiveAt": "2026-09-27T13:22:41.208Z"
-    },
-    {
       "id": "sub_1790515413577_2o517c",
       "quizId": "quiz_1790513008734_zw1rkt",
       "participantName": "santo",

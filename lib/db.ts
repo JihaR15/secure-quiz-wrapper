@@ -148,3 +148,14 @@ export function updateSubmissionViolations(
   }
   return null;
 }
+
+export function deleteSubmission(submissionId: string): boolean {
+  const db = ensureDbFile();
+  const index = db.submissions.findIndex((s) => s.id === submissionId);
+  if (index !== -1) {
+    db.submissions.splice(index, 1);
+    saveDb(db);
+    return true;
+  }
+  return false;
+}
