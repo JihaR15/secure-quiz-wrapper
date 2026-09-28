@@ -25,6 +25,7 @@ export async function POST(request: Request) {
       quizId,
       participantName: participantName.trim(),
       violationCount: 0,
+      violationBreakdown: { tab: 0, window: 0, clipboard: 0, contextmenu: 0 },
       status: "active",
       startedAt: now,
       lastActiveAt: now,
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { submissionId, violationCount } = body;
+    const { submissionId, violationCount, violationBreakdown } = body;
 
     if (!submissionId || typeof violationCount !== "number") {
       return NextResponse.json(
@@ -53,7 +54,32 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const updated = await updateSubmissionViolations(submissionId, violationCount);
+    let breakdown: Submission["violationBreakdown"] | undefined;
+    if (violationBreakdown != null) {
+      const raw = violationBreakdown as Record<string, number>;
+      const values: (number | undefined)[] = [
+        raw.tab,
+        raw.window,
+        raw.clipboard,
+        raw.contextmenu,
+      ];
+      if (
+        values.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0)
+      ) {
+        return NextResponse.json(
+          { error: "violationBreakdown harus berisi angka non-negatif untuk tab, window, clipboard, dan contextmenu." },
+          { status: 400 }
+        );
+      }
+      breakdown = {
+        tab: raw.tab as number,
+        window: raw.window as number,
+        clipboard: raw.clipboard as number,
+        contextmenu: raw.contextmenu as number,
+      };
+    }
+
+    const updated = await updateSubmissionViolations(submissionId, violationCount, breakdown);
     if (!updated) {
       return NextResponse.json(
         { error: "Sesi peserta tidak ditemukan." },

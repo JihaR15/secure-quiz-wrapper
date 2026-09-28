@@ -17,11 +17,17 @@ export interface Quiz {
   createdAt: string;
 }
 
+export type ViolationType = "tab" | "window" | "clipboard" | "contextmenu";
+
+export type ViolationBreakdown = Record<ViolationType, number>;
+
 export interface Submission {
   id: string;
   quizId: string;
   participantName: string;
   violationCount: number;
+  /** Per-type violation counts. Backfills to zeros when absent from old rows. */
+  violationBreakdown: ViolationBreakdown;
   status: "active" | "completed";
   startedAt: string;
   lastActiveAt: string;

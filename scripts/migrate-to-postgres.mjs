@@ -66,12 +66,15 @@ async function main() {
     console.log(`quizzes     : ${quizzes.length}`);
 
     for (const sub of submissions) {
+      const breakdown =
+        sub.violationBreakdown ?? { tab: 0, window: 0, clipboard: 0, contextmenu: 0 };
       await tx`
-        insert into submissions (id, quiz_id, participant_name, violation_count, status, started_at, last_active_at)
-        values (${sub.id}, ${sub.quizId}, ${sub.participantName}, ${sub.violationCount}, ${sub.status}, ${sub.startedAt}, ${sub.lastActiveAt})
+        insert into submissions (id, quiz_id, participant_name, violation_count, violation_breakdown, status, started_at, last_active_at)
+        values (${sub.id}, ${sub.quizId}, ${sub.participantName}, ${sub.violationCount}, ${tx.json(breakdown)}, ${sub.status}, ${sub.startedAt}, ${sub.lastActiveAt})
         on conflict (id) do update set
           participant_name = excluded.participant_name,
           violation_count = excluded.violation_count,
+          violation_breakdown = excluded.violation_breakdown,
           status = excluded.status,
           last_active_at = excluded.last_active_at
       `;

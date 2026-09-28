@@ -13,6 +13,7 @@ import {
 import { Delete02Icon } from "hugeicons-react";
 import { useLanguage } from "@/components/providers";
 import { formatTime, riskLevel } from "@/lib/quiz-format";
+import type { Translation } from "@/lib/i18n";
 import type { Submission } from "@/lib/db";
 
 type ParticipantTableProps = {
@@ -35,6 +36,37 @@ function riskBadge(risk: "none" | "warning" | "high", label: string) {
     >
       {label}
     </Badge>
+  );
+}
+
+const breakdownValue = (submission: Submission, key: keyof Submission["violationBreakdown"]) =>
+  submission.violationBreakdown?.[key] ?? 0;
+
+/** Compact per-type counts, `t` comes from the hook so labels stay bilingual. */
+function BreakdownLine({
+  submission,
+  t,
+}: {
+  submission: Submission;
+  t: Translation;
+}) {
+  const labels = [
+    ["tab", "vioTab"],
+    ["window", "vioWindow"],
+    ["clipboard", "vioClipboard"],
+    ["contextmenu", "vioContext"],
+  ] as const;
+
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
+      {labels.map(([key, labelKey]) => (
+        <span key={key} className="shrink-0">
+          <span className="text-foreground/80">{breakdownValue(submission, key)}</span>
+          {" · "}
+          {t[labelKey]}
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -94,6 +126,8 @@ export function ParticipantTable({
                   </span>
                 </div>
 
+                <BreakdownLine submission={submission} t={t} />
+
                 <dl className="grid grid-cols-2 gap-x-3 gap-y-1 font-mono text-[0.6875rem] tabular-nums">
                   <dt className="text-muted-foreground">{t.startedAt}</dt>
                   <dd className="truncate">{formatTime(submission.startedAt, locale)}</dd>
@@ -148,9 +182,10 @@ export function ParticipantTable({
                   </TableCell>
 
                   <TableCell className="font-medium tracking-[-0.01em]">
-                    <span className="block max-w-[16ch] truncate">
+                    <span className="block max-w-[18ch] truncate">
                       {submission.participantName}
                     </span>
+                    <BreakdownLine submission={submission} t={t} />
                   </TableCell>
 
                   <TableCell className="text-right font-mono text-sm tabular-nums">

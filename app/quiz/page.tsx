@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { decodeFormUrl } from "@/lib/url";
+import type { ViolationType } from "@/lib/types";
 import { ViolationToast } from "@/components/quiz/violation-toast";
 import { SecurityBadge } from "@/components/quiz/violation-badge";
 import { NameGateModal } from "@/components/quiz/name-gate-modal";
@@ -38,10 +39,17 @@ function QuizContent() {
   const [participantName, setParticipantName] = useState<string>("");
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [isNameGateOpen, setIsNameGateOpen] = useState<boolean>(true);
-  const [violationCount, setViolationCount] = useState<number>(0);
+  const [violationBreakdown, setViolationBreakdown] = useState<
+    Record<ViolationType, number>
+  >({ tab: 0, window: 0, clipboard: 0, contextmenu: 0 });
   const [showToast, setShowToast] = useState<boolean>(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+
+  const violationCount = React.useMemo(
+    () => Object.values(violationBreakdown).reduce((sum, value) => sum + value, 0),
+    [violationBreakdown],
+  );
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
@@ -94,24 +102,25 @@ function QuizContent() {
   useEffect(() => {
     if (isNameGateOpen || isCompleted) return;
 
-    const syncViolation = (count: number) => {
+    const syncViolation = (breakdown: Record<ViolationType, number>) => {
       if (!submissionId) return;
+      const total = Object.values(breakdown).reduce((sum, value) => sum + value, 0);
       fetch("/api/submissions", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submissionId, violationCount: count }),
+        body: JSON.stringify({ submissionId, violationCount: total, violationBreakdown: breakdown }),
       }).catch(() => {});
     };
 
-    const triggerViolation = () => {
+    const triggerViolation = (type: ViolationType) => {
       if (isGracePeriodRef.current) return;
 
       const now = Date.now();
       if (now - lastViolationTimeRef.current < VIOLATION_COOLDOWN_MS) return;
       lastViolationTimeRef.current = now;
 
-      setViolationCount((previous) => {
-        const next = previous + 1;
+      setViolationBreakdown((previous) => {
+        const next = { ...previous, [type]: previous[type] + 1 };
         syncViolation(next);
         return next;
       });
@@ -119,15 +128,16 @@ function QuizContent() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") triggerViolation();
+      // Hidden covers tab switches, minimize, and app switches alike.
+      if (document.visibilityState === "hidden") triggerViolation("tab");
     };
 
-    const handlePageHide = () => triggerViolation();
+    const handlePageHide = () => triggerViolation("tab");
 
     const handleWindowBlur = () => {
       window.setTimeout(() => {
         if (document.visibilityState === "hidden" || !document.hasFocus()) {
-          triggerViolation();
+          triggerViolation("window");
           return;
         }
         // Focus moving into the embedded form is expected, not a violation.
@@ -135,12 +145,20 @@ function QuizContent() {
         if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
           return;
         }
-        triggerViolation();
+        triggerViolation("window");
       }, FOCUS_SETTLE_MS);
     };
 
-    const preventContextMenu = (event: MouseEvent) => event.preventDefault();
-    const preventClipboard = (event: ClipboardEvent) => event.preventDefault();
+    // Attempts are both blocked and counted, so the admin sees when a
+    // participant tried (and failed) to copy questions or open a menu.
+    const preventContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      triggerViolation("contextmenu");
+    };
+    const preventClipboard = (event: ClipboardEvent) => {
+      event.preventDefault();
+      triggerViolation("clipboard");
+    };
 
     const blockedKeys = ["c", "v", "x", "u", "s", "p", "a"];
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -151,6 +169,9 @@ function QuizContent() {
       const withModifier = event.ctrlKey || event.metaKey;
       if (withModifier && blockedKeys.includes(event.key.toLowerCase())) {
         event.preventDefault();
+        if (["c", "v", "x"].includes(event.key.toLowerCase())) {
+          triggerViolation("clipboard");
+        }
       }
     };
 
@@ -211,6 +232,22 @@ function QuizContent() {
               >
                 {violationCount}
               </dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+              <dt className="text-muted-foreground">{t.vioTab}</dt>
+              <dd className="tabular-nums">{violationBreakdown.tab}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+              <dt className="text-muted-foreground">{t.vioWindow}</dt>
+              <dd className="tabular-nums">{violationBreakdown.window}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+              <dt className="text-muted-foreground">{t.vioClipboard}</dt>
+              <dd className="tabular-nums">{violationBreakdown.clipboard}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">
+              <dt className="text-muted-foreground">{t.vioContext}</dt>
+              <dd className="tabular-nums">{violationBreakdown.contextmenu}</dd>
             </div>
             {startedAtLabel ? (
               <div className="flex items-baseline justify-between gap-4 px-3.5 py-2.5">

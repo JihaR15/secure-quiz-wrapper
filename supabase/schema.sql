@@ -38,10 +38,14 @@ create table if not exists submissions (
   quiz_id          text not null references quizzes (id) on delete cascade,
   participant_name text not null,
   violation_count  integer not null default 0,
+  violation_breakdown jsonb not null default '{}'::jsonb,
   status           text not null default 'active' check (status in ('active', 'completed')),
   started_at       timestamptz not null default now(),
   last_active_at   timestamptz not null default now()
 );
+
+-- Backfill rows written before per-type breakdowns existed. Safe to repeat.
+alter table submissions add column if not exists violation_breakdown jsonb not null default '{}'::jsonb;
 
 create index if not exists submissions_quiz_id_started_at_idx
   on submissions (quiz_id, started_at);

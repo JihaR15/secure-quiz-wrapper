@@ -35,7 +35,8 @@ interface Store {
   createSubmission(submission: Submission): Promise<Submission>;
   updateSubmissionViolations(
     submissionId: string,
-    violationCount: number
+    violationCount: number,
+    violationBreakdown?: Submission["violationBreakdown"]
   ): Promise<Submission | null>;
   deleteSubmission(submissionId: string): Promise<boolean>;
 }
@@ -43,6 +44,21 @@ interface Store {
 /* ------------------------------------------------------------------ *
  * JSON file backend
  * ------------------------------------------------------------------ */
+
+const EMPTY_BREAKDOWN: Submission["violationBreakdown"] = {
+  tab: 0,
+  window: 0,
+  clipboard: 0,
+  contextmenu: 0,
+};
+
+/** Submissions written before breakdowns existed read as all zeros. */
+const withBreakdown = (
+  breakdown: Submission["violationBreakdown"] | null | undefined
+): Submission["violationBreakdown"] => ({
+  ...EMPTY_BREAKDOWN,
+  ...(breakdown ?? {}),
+});
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
@@ -134,31 +150,36 @@ const jsonStore: Store = {
 
   async getSubmissionsByQuiz(quizId) {
     const db = readJsonDb();
-    return db.submissions.filter((s) => s.quizId === quizId);
+    return db.submissions
+      .filter((s) => s.quizId === quizId)
+      .map((s) => ({ ...s, violationBreakdown: withBreakdown(s.violationBreakdown) }));
   },
 
   async getSubmissionsByQuizIds(quizIds) {
     if (quizIds.length === 0) return [];
     const db = readJsonDb();
     const wanted = new Set(quizIds);
-    return db.submissions.filter((s) => wanted.has(s.quizId));
+    return db.submissions
+      .filter((s) => wanted.has(s.quizId))
+      .map((s) => ({ ...s, violationBreakdown: withBreakdown(s.violationBreakdown) }));
   },
 
   async createSubmission(submission) {
     const db = readJsonDb();
     db.submissions.push(submission);
     writeJsonDb(db);
-    return submission;
+    return { ...submission, violationBreakdown: withBreakdown(submission.violationBreakdown) };
   },
 
-  async updateSubmissionViolations(submissionId, violationCount) {
+  async updateSubmissionViolations(submissionId, violationCount, violationBreakdown) {
     const db = readJsonDb();
     const sub = db.submissions.find((s) => s.id === submissionId);
     if (!sub) return null;
     sub.violationCount = violationCount;
+    if (violationBreakdown) sub.violationBreakdown = violationBreakdown;
     sub.lastActiveAt = new Date().toISOString();
     writeJsonDb(db);
-    return sub;
+    return { ...sub, violationBreakdown: withBreakdown(sub.violationBreakdown) };
   },
 
   async deleteSubmission(submissionId) {
@@ -198,6 +219,7 @@ interface SubmissionRow {
   quiz_id: string;
   participant_name: string;
   violation_count: number;
+  violation_breakdown: Submission["violationBreakdown"] | null;
   status: Submission["status"];
   started_at: Date | string;
   last_active_at: Date | string;
@@ -235,6 +257,7 @@ const toSubmission = (row: SubmissionRow): Submission => ({
   quizId: row.quiz_id,
   participantName: row.participant_name,
   violationCount: row.violation_count,
+  violationBreakdown: withBreakdown(row.violation_breakdown),
   status: row.status,
   startedAt: iso(row.started_at),
   lastActiveAt: iso(row.last_active_at),
@@ -332,22 +355,29 @@ function createPostgresStore(connectionString: string): Store {
 
     async createSubmission(submission) {
       const rows = await sql<SubmissionRow[]>`
-        insert into submissions (id, quiz_id, participant_name, violation_count, status, started_at, last_active_at)
+        insert into submissions (id, quiz_id, participant_name, violation_count, violation_breakdown, status, started_at, last_active_at)
         values (
           ${submission.id}, ${submission.quizId}, ${submission.participantName},
-          ${submission.violationCount}, ${submission.status}, ${submission.startedAt}, ${submission.lastActiveAt}
+          ${submission.violationCount}, ${sql.json(submission.violationBreakdown ?? EMPTY_BREAKDOWN)},
+          ${submission.status}, ${submission.startedAt}, ${submission.lastActiveAt}
         )
         returning *
       `;
       return toSubmission(rows[0]);
     },
 
-    async updateSubmissionViolations(submissionId, violationCount) {
+    async updateSubmissionViolations(submissionId, violationCount, violationBreakdown) {
       // Single statement, so concurrent proctoring events cannot clobber
-      // each other the way a read-modify-write on a file could.
+      // each other the way a read-modify-write on a file could. The breakdown
+      // column is only touched when the caller sends one.
       const rows = await sql<SubmissionRow[]>`
         update submissions
-        set violation_count = ${violationCount}, last_active_at = now()
+        set violation_count = ${violationCount},
+            violation_breakdown = case
+              when ${violationBreakdown === undefined}::boolean then violation_breakdown
+              else ${sql.json(violationBreakdown ?? EMPTY_BREAKDOWN)}
+            end,
+            last_active_at = now()
         where id = ${submissionId}
         returning *
       `;
@@ -459,9 +489,10 @@ export function createSubmission(submission: Submission): Promise<Submission> {
 
 export function updateSubmissionViolations(
   submissionId: string,
-  violationCount: number
+  violationCount: number,
+  violationBreakdown?: Submission["violationBreakdown"]
 ): Promise<Submission | null> {
-  return getStore().updateSubmissionViolations(submissionId, violationCount);
+  return getStore().updateSubmissionViolations(submissionId, violationCount, violationBreakdown);
 }
 
 export function deleteSubmission(submissionId: string): Promise<boolean> {
