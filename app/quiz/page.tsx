@@ -229,10 +229,14 @@ function QuizContent() {
   useEffect(() => {
     if (isNameGateOpen || isCompleted) return;
 
-    // 1. Tab switch (visibilitychange)
+    // 1. Tab switch vs Window switch detection (visibilitychange)
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState === "hidden") {
-        triggerViolation("tab");
+        if (!document.hasFocus()) {
+          triggerViolation("window");
+        } else {
+          triggerViolation("tab");
+        }
       }
     };
 
