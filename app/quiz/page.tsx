@@ -65,20 +65,8 @@ function QuizContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storageKey = `quiz_session_${quizIdParam || "default"}`;
-    const completedKey = `quiz_completed_${quizIdParam || "default"}`;
 
     try {
-      const isCompletedLocally =
-        sessionStorage.getItem(completedKey) === "true" ||
-        localStorage.getItem(completedKey) === "true";
-
-      if (isCompletedLocally) {
-        isCompletedRef.current = true;
-        setIsCompleted(true);
-        setIsNameGateOpen(false);
-        return;
-      }
-
       const saved = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
       if (saved) {
         const data = JSON.parse(saved);
@@ -169,12 +157,9 @@ function QuizContent() {
     }
 
     const storageKey = `quiz_session_${quizIdParam || "default"}`;
-    const completedKey = `quiz_completed_${quizIdParam || "default"}`;
     try {
       sessionStorage.removeItem(storageKey);
       localStorage.removeItem(storageKey);
-      sessionStorage.setItem(completedKey, "true");
-      localStorage.setItem(completedKey, "true");
     } catch {}
   };
 
