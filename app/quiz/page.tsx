@@ -241,20 +241,14 @@ function QuizContent() {
       triggerViolation("tab");
     };
 
-    // 3. Alt+Tab / Window focus loss handler
+    // 3. Alt+Tab / Window focus loss handler (Pindah Window)
     const handleWindowBlur = () => {
       setTimeout(() => {
         if (isGracePeriodRef.current || showFinishConfirmRef.current || isCompletedRef.current) return;
         if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
 
-        if (document.hidden || document.visibilityState === "hidden") {
-          triggerViolation("tab");
-          return;
-        }
-
         if (!document.hasFocus()) {
           triggerViolation("window");
-          return;
         }
       }, 150);
     };
