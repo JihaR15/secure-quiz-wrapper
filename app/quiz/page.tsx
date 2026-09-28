@@ -45,6 +45,8 @@ function QuizContent() {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
+  const showFinishConfirmRef = useRef<boolean>(false);
+  const lastFinishCancelTimeRef = useRef<number>(0);
 
   const t = translations[language];
 
@@ -87,11 +89,23 @@ function QuizContent() {
     }
   };
 
-  // Finish exam handler
+  // Finish exam handlers
+  const handleOpenFinish = () => {
+    showFinishConfirmRef.current = true;
+    setShowFinishConfirm(true);
+  };
+
+  const handleCancelFinish = () => {
+    showFinishConfirmRef.current = false;
+    lastFinishCancelTimeRef.current = Date.now();
+    setShowFinishConfirm(false);
+  };
+
   const handleConfirmFinish = () => {
     if (typeof document !== "undefined" && document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
+    showFinishConfirmRef.current = false;
     setShowFinishConfirm(false);
     setIsCompleted(true);
   };
@@ -115,7 +129,8 @@ function QuizContent() {
     };
 
     const triggerViolation = (type: ViolationType) => {
-      if (isGracePeriodRef.current) return;
+      if (isGracePeriodRef.current || showFinishConfirmRef.current) return;
+      if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
 
       const now = Date.now();
       if (now - lastViolationTimeRef.current < 1200) return;
@@ -368,7 +383,7 @@ function QuizContent() {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => setShowFinishConfirm(true)}
+              onClick={handleOpenFinish}
               className="shadow-xl font-semibold text-xs py-2 px-3"
             >
               <Logout01Icon className="w-4 h-4" />
@@ -416,7 +431,7 @@ function QuizContent() {
                 variant="outline"
                 size="default"
                 className="w-1/2"
-                onClick={() => setShowFinishConfirm(false)}
+                onClick={handleCancelFinish}
               >
                 {language === "id" ? "Batal" : "Cancel"}
               </Button>

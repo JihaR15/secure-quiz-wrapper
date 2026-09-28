@@ -88,7 +88,7 @@ export default function AdminDashboardPage() {
     React.useState<Submission | null>(null);
 
   const loadQuizzes = React.useCallback(
-    async (adminName?: string) => {
+    async (adminName?: string, silent = false) => {
       if (adminName !== undefined) setAdminName(adminName);
 
       try {
@@ -106,7 +106,7 @@ export default function AdminDashboardPage() {
           );
         }
       } catch {
-        toast.error(t.toastNetworkError);
+        if (!silent) toast.error(t.toastNetworkError);
       }
     },
     [t.toastNetworkError],
@@ -143,6 +143,16 @@ export default function AdminDashboardPage() {
       cancelled = true;
     };
   }, [loadQuizzes, router]);
+
+  // Periodic auto-refresh every 5 seconds to update participant table and violations live
+  React.useEffect(() => {
+    if (loading) return;
+    const interval = setInterval(() => {
+      void loadQuizzes(undefined, true);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [loading, loadQuizzes]);
 
   const selectedQuiz = quizzes.find((quiz) => quiz.id === selectedQuizId) ?? null;
 
