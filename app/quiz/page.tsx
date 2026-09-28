@@ -47,6 +47,7 @@ function QuizContent() {
   const isGracePeriodRef = useRef<boolean>(true);
   const showFinishConfirmRef = useRef<boolean>(false);
   const lastFinishCancelTimeRef = useRef<number>(0);
+  const isCompletedRef = useRef<boolean>(false);
 
   const t = translations[language];
 
@@ -64,8 +65,20 @@ function QuizContent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const storageKey = `quiz_session_${quizIdParam || "default"}`;
+    const completedKey = `quiz_completed_${quizIdParam || "default"}`;
 
     try {
+      const isCompletedLocally =
+        sessionStorage.getItem(completedKey) === "true" ||
+        localStorage.getItem(completedKey) === "true";
+
+      if (isCompletedLocally) {
+        isCompletedRef.current = true;
+        setIsCompleted(true);
+        setIsNameGateOpen(false);
+        return;
+      }
+
       const saved = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
       if (saved) {
         const data = JSON.parse(saved);
@@ -146,23 +159,29 @@ function QuizContent() {
   };
 
   const handleConfirmFinish = () => {
+    isCompletedRef.current = true;
+    setIsCompleted(true);
+    showFinishConfirmRef.current = false;
+    setShowFinishConfirm(false);
+
     if (typeof document !== "undefined" && document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
 
     const storageKey = `quiz_session_${quizIdParam || "default"}`;
+    const completedKey = `quiz_completed_${quizIdParam || "default"}`;
     try {
       sessionStorage.removeItem(storageKey);
       localStorage.removeItem(storageKey);
+      sessionStorage.setItem(completedKey, "true");
+      localStorage.setItem(completedKey, "true");
     } catch {}
-
-    showFinishConfirmRef.current = false;
-    setShowFinishConfirm(false);
-    setIsCompleted(true);
   };
 
   const syncViolation = React.useCallback(
     (count: number, breakdown: ViolationBreakdown) => {
+      if (isCompletedRef.current) return;
+
       const storageKey = `quiz_session_${quizIdParam || "default"}`;
       if (participantName && submissionId) {
         try {
@@ -195,7 +214,7 @@ function QuizContent() {
 
   const triggerViolation = React.useCallback(
     (type: ViolationType) => {
-      if (isGracePeriodRef.current || showFinishConfirmRef.current) return;
+      if (isGracePeriodRef.current || showFinishConfirmRef.current || isCompletedRef.current) return;
       if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
 
       const now = Date.now();
