@@ -16,7 +16,7 @@ import {
   Globe02Icon,
   CheckmarkCircle01Icon,
 } from "hugeicons-react";
-import { Language, translations } from "@/lib/i18n";
+import { useLanguage } from "@/components/providers";
 import { ViolationBreakdown, ViolationType } from "@/lib/types";
 
 function QuizContent() {
@@ -24,7 +24,7 @@ function QuizContent() {
   const rawFormParam = searchParams.get("form");
   const quizIdParam = searchParams.get("id");
 
-  const [language, setLanguage] = useState<Language>("id");
+  const { language, toggleLanguage, t } = useLanguage();
   const [targetUrl, setTargetUrl] = useState<string>("");
   const [participantName, setParticipantName] = useState<string>("");
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -49,8 +49,6 @@ function QuizContent() {
   const showFinishConfirmRef = useRef<boolean>(false);
   const lastFinishCancelTimeRef = useRef<number>(0);
   const isCompletedRef = useRef<boolean>(false);
-
-  const t = translations[language];
 
   useEffect(() => {
     if (rawFormParam) {
@@ -481,7 +479,7 @@ function QuizContent() {
           {/* Controls di sebelah Kanan */}
           <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
             <button
-              onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
+              onClick={toggleLanguage}
               className="p-2 px-3 rounded-2xl bg-neutral-950/90 border border-neutral-800 shadow-xl backdrop-blur-md text-xs font-mono text-neutral-300 hover:text-white transition-colors flex items-center gap-1.5"
             >
               <Globe02Icon className="w-3.5 h-3.5 text-neutral-400" />

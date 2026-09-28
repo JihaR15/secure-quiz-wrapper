@@ -17,6 +17,7 @@ import {
   Alert02Icon,
   ArrowExpand01Icon,
   ArrowRight01Icon,
+  Globe02Icon,
   SmartPhone01Icon,
   Wifi01Icon,
 } from "hugeicons-react";
@@ -50,7 +51,7 @@ const RULES = [
 ];
 
 export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
-  const { t, language } = useLanguage();
+  const { t, language, toggleLanguage } = useLanguage();
   const [step, setStep] = React.useState<"name" | "rules">("name");
   const [name, setName] = React.useState("");
   const [error, setError] = React.useState("");
@@ -79,7 +80,17 @@ export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
         className="max-w-md gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-md"
       >
         <DialogHeader className="space-y-5 px-6 pt-7 pb-0 text-left sm:px-7">
-          <Logo className="h-6" priority />
+          <div className="flex items-center justify-between">
+            <Logo className="h-6" priority />
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Globe02Icon className="size-3.5 text-muted-foreground" />
+              <span>{language.toUpperCase()}</span>
+            </button>
+          </div>
           <div className="space-y-1.5">
             <DialogTitle className="font-display text-2xl font-medium tracking-[-0.02em]">
               {step === "name" ? t.quizGateTitle : t.quizGateRulesTitle}
