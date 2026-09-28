@@ -4,10 +4,12 @@ import {
   getQuizzesByAdmin,
   getSubmissionsByQuizIds,
   createQuiz,
+  updateQuizResultUrl,
   deleteQuiz,
 } from "@/lib/db";
 import type { Quiz } from "@/lib/types";
 import { encodeFormUrl } from "@/lib/url";
+import { isHttpUrl } from "@/lib/result-url";
 
 export async function GET() {
   const admin = await getAuthenticatedAdmin();
@@ -41,11 +43,21 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, formUrl } = body;
+    const { title, formUrl, resultUrl } = body;
 
     if (!title || !formUrl) {
       return NextResponse.json(
         { error: "Judul kuis dan URL form wajib diisi." },
+        { status: 400 }
+      );
+    }
+
+    // Optional. An empty string means the teacher skipped it, and anything
+    // that is not http(s) is rejected so a bad link never reaches the page.
+    const trimmedResult = typeof resultUrl === "string" ? resultUrl.trim() : "";
+    if (trimmedResult && !isHttpUrl(trimmedResult)) {
+      return NextResponse.json(
+        { error: "Link hasil harus berupa URL yang diawali http:// atau https://" },
         { status: 400 }
       );
     }
@@ -57,6 +69,7 @@ export async function POST(request: Request) {
       title,
       formUrl,
       encodedUrl,
+      resultUrl: trimmedResult || null,
       createdAt: new Date().toISOString(),
     };
 
@@ -66,6 +79,49 @@ export async function POST(request: Request) {
     console.error("[api/quizzes] POST gagal:", error);
     return NextResponse.json(
       { error: "Gagal membuat kuis baru." },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: Request) {
+  const admin = await getAuthenticatedAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    const { quizId, resultUrl } = body;
+
+    if (!quizId || typeof resultUrl !== "string") {
+      return NextResponse.json(
+        { error: "Quiz ID dan link hasil wajib diisi." },
+        { status: 400 }
+      );
+    }
+
+    const trimmed = resultUrl.trim();
+    if (trimmed && !isHttpUrl(trimmed)) {
+      return NextResponse.json(
+        { error: "Link hasil harus berupa URL yang diawali http:// atau https://" },
+        { status: 400 }
+      );
+    }
+
+    const updated = await updateQuizResultUrl(quizId, admin.id, trimmed || null);
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, quiz: updated });
+  } catch (error) {
+    console.error("[api/quizzes] PATCH gagal:", error);
+    return NextResponse.json(
+      { error: "Gagal menyimpan link hasil kuis." },
       { status: 500 }
     );
   }

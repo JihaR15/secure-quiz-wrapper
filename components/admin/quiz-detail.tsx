@@ -2,18 +2,25 @@
 
 import * as React from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { toast } from "sonner";
 import {
   ArrowUpRight01Icon,
   CheckmarkCircle01Icon,
   Copy01Icon,
   Download01Icon,
+  Edit02Icon,
+  QrCode01Icon,
+  Ticket01Icon,
 } from "hugeicons-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ParticipantTable } from "@/components/admin/participant-table";
 import { useLanguage, useTheme } from "@/components/providers";
 import { formatDate, getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
+import { describeResultHost, isHttpUrl } from "@/lib/result-url";
+import { downloadQrPng } from "@/lib/download-qr";
 import type { Submission } from "@/lib/db";
 
 type QuizDetailProps = {
@@ -23,6 +30,7 @@ type QuizDetailProps = {
   copied: boolean;
   onCopy: (quiz: QuizWithSubmissions) => void;
   onRequestDeleteSubmission: (submission: Submission) => void;
+  onUpdateResultUrl: (quizId: string, resultUrl: string) => Promise<boolean>;
 };
 
 function formHost(formUrl: string): string {
@@ -65,15 +73,55 @@ export function QuizDetail({
   copied,
   onCopy,
   onRequestDeleteSubmission,
+  onUpdateResultUrl,
 }: QuizDetailProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const url = getQuizUrl(origin, quiz);
 
+  const [editingResult, setEditingResult] = React.useState(false);
+  const [resultDraft, setResultDraft] = React.useState(quiz.resultUrl ?? "");
+  const [savingResult, setSavingResult] = React.useState(false);
+  const [resultError, setResultError] = React.useState("");
+
   const violations = quiz.submissions.reduce(
     (total, submission) => total + submission.violationCount,
     0,
   );
+
+  async function handleSaveResultUrl() {
+    const next = resultDraft.trim();
+    if (next && !isHttpUrl(next)) {
+      setResultError(t.resultUrlInvalid);
+      return;
+    }
+
+    setSavingResult(true);
+    setResultError("");
+    const saved = await onUpdateResultUrl(quiz.id, next);
+    setSavingResult(false);
+
+    if (saved) {
+      setEditingResult(false);
+      toast.success(next ? t.resultUrlSaved : t.resultUrlCleared);
+    } else {
+      setResultError(t.toastCreateFailed);
+    }
+  }
+
+  async function handleDownloadQr() {
+    try {
+      const slug =
+        quiz.title
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") || "quiz";
+      await downloadQrPng(url, `qr-${slug}.png`);
+      toast.success(t.qrDownloaded);
+    } catch {
+      toast.error(t.toastNetworkError);
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -87,16 +135,47 @@ export function QuizDetail({
               {quiz.title}
             </h2>
           </div>
-          <Button asChild variant="outline" size="sm" className="h-10 shrink-0 gap-2 sm:h-8">
-            <a
-              href={`/api/export?quizId=${quiz.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {quiz.resultUrl ? (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-10 gap-2 sm:h-8"
+                title={t.openInNewTab}
+              >
+                <a href={quiz.resultUrl} target="_blank" rel="noopener noreferrer">
+                  <Ticket01Icon className="size-4" />
+                  {t.viewResults}
+                </a>
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setResultDraft(quiz.resultUrl ?? "");
+                setEditingResult((value) => !value);
+                setResultError("");
+              }}
+              className="h-10 gap-2 sm:h-8"
+              title={t.editResultLink}
             >
-              <Download01Icon className="size-4" />
-              {t.exportExcel}
-            </a>
-          </Button>
+              <Edit02Icon className="size-4" />
+              {t.editResultLink}
+            </Button>
+            <Button asChild variant="outline" size="sm" className="h-10 shrink-0 gap-2 sm:h-8">
+              <a
+                href={`/api/export?quizId=${quiz.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download01Icon className="size-4" />
+                {t.exportExcel}
+              </a>
+            </Button>
+          </div>
         </div>
 
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">
@@ -179,10 +258,119 @@ export function QuizDetail({
           <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
             {t.scanQrCode}
           </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadQr}
+            className="h-9 w-full gap-2"
+          >
+            <QrCode01Icon className="size-4" />
+            {t.downloadQr}
+          </Button>
         </div>
       </div>
 
       <div className="space-y-4 border-t border-border pt-6">
+        {/* Results link. Read-only card until the teacher asks to edit, so the
+            common case stays a single obvious button. */}
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
+              <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
+                {t.resultUrlLabel}
+              </p>
+              {editingResult ? null : quiz.resultUrl ? (
+                <a
+                  href={quiz.resultUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block max-w-full truncate text-sm font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                >
+                  {describeResultHost(quiz.resultUrl)}
+                </a>
+              ) : (
+                <p className="text-sm text-muted-foreground">{t.resultUrlEmpty}</p>
+              )}
+            </div>
+            {editingResult ? null : quiz.resultUrl ? (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2"
+                title={t.openInNewTab}
+              >
+                <a href={quiz.resultUrl} target="_blank" rel="noopener noreferrer">
+                  <ArrowUpRight01Icon className="size-4" />
+                  {t.viewResults}
+                </a>
+              </Button>
+            ) : null}
+          </div>
+
+          {editingResult ? (
+            <div className="mt-3 space-y-2">
+              <Label htmlFor={`result-url-${quiz.id}`} className="sr-only">
+                {t.resultUrlLabel}
+              </Label>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  id={`result-url-${quiz.id}`}
+                  type="url"
+                  inputMode="url"
+                  autoFocus
+                  spellCheck={false}
+                  value={resultDraft}
+                  onChange={(event) => {
+                    setResultDraft(event.target.value);
+                    if (resultError) setResultError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleSaveResultUrl();
+                    }
+                  }}
+                  placeholder={t.resultUrlPlaceholder}
+                  aria-invalid={resultError ? true : undefined}
+                  className="h-10 flex-1 font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  onClick={() => void handleSaveResultUrl()}
+                  disabled={savingResult}
+                  className="h-10 shrink-0 gap-2 sm:w-28"
+                >
+                  <CheckmarkCircle01Icon className="size-4" />
+                  {t.save}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditingResult(false);
+                    setResultDraft(quiz.resultUrl ?? "");
+                    setResultError("");
+                  }}
+                  className="h-10 shrink-0 sm:w-24"
+                >
+                  {t.cancel}
+                </Button>
+              </div>
+              {resultError ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {resultError}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {t.resultUrlHint}
+                </p>
+              )}
+            </div>
+          ) : null}
+        </div>
+
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-sm font-semibold tracking-[-0.01em]">
             {t.participantResults}

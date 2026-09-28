@@ -27,6 +27,7 @@ import { LanguageToggle } from "@/components/site/language-toggle";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { useLanguage, useTheme } from "@/components/providers";
 import { getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
+import { isHttpUrl } from "@/lib/result-url";
 import type { Submission } from "@/lib/db";
 
 const LOCALE = { id: "id-ID", en: "en-GB" } as const;
@@ -74,6 +75,8 @@ export default function AdminDashboardPage() {
 
   const [titleInput, setTitleInput] = React.useState("");
   const [urlInput, setUrlInput] = React.useState("");
+  const [resultUrlInput, setResultUrlInput] = React.useState("");
+  const [resultUrlError, setResultUrlError] = React.useState("");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -156,14 +159,26 @@ export default function AdminDashboardPage() {
       return;
     }
 
+    // The results link is optional, so only validate it when it was filled in.
+    const resultLink = resultUrlInput.trim();
+    if (resultLink && !isHttpUrl(resultLink)) {
+      setResultUrlError(t.resultUrlInvalid);
+      return;
+    }
+
     setSubmitting(true);
     setError("");
+    setResultUrlError("");
 
     try {
       const res = await fetch("/api/quizzes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: titleInput.trim(), formUrl: urlInput.trim() }),
+        body: JSON.stringify({
+          title: titleInput.trim(),
+          formUrl: urlInput.trim(),
+          resultUrl: resultLink,
+        }),
       });
       const data = await res.json();
 
@@ -174,12 +189,31 @@ export default function AdminDashboardPage() {
 
       setTitleInput("");
       setUrlInput("");
+      setResultUrlInput("");
       toast.success(t.toastCreated);
       await loadQuizzes();
     } catch {
       setError(t.toastNetworkError);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleUpdateResultUrl = async (
+    quizId: string,
+    resultUrl: string
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/quizzes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId, resultUrl }),
+      });
+      if (!res.ok) return false;
+      await loadQuizzes();
+      return true;
+    } catch {
+      return false;
     }
   };
 
@@ -317,10 +351,13 @@ export default function AdminDashboardPage() {
               <CreateQuizForm
                 title={titleInput}
                 url={urlInput}
+                resultUrl={resultUrlInput}
+                resultUrlError={resultUrlError}
                 error={error}
                 submitting={submitting}
                 onTitleChange={setTitleInput}
                 onUrlChange={setUrlInput}
+                onResultUrlChange={setResultUrlInput}
                 onSubmit={handleCreateQuiz}
               />
             </section>
@@ -376,12 +413,14 @@ export default function AdminDashboardPage() {
               >
                 {selectedQuiz ? (
                   <QuizDetail
+                    key={selectedQuiz.id}
                     quiz={selectedQuiz}
                     origin={origin}
                     locale={locale}
                     copied={copiedId === selectedQuiz.id}
                     onCopy={handleCopyLink}
                     onRequestDeleteSubmission={setSubmissionPendingDelete}
+                    onUpdateResultUrl={handleUpdateResultUrl}
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">

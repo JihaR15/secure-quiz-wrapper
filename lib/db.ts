@@ -28,6 +28,7 @@ interface Store {
   getQuizzesByAdmin(adminId: string): Promise<Quiz[]>;
   getQuizById(quizId: string): Promise<Quiz | undefined>;
   createQuiz(quiz: Quiz): Promise<Quiz>;
+  updateQuizResultUrl(quizId: string, adminId: string, resultUrl: string | null): Promise<Quiz | null>;
   deleteQuiz(quizId: string, adminId: string): Promise<boolean>;
   getSubmissionsByQuiz(quizId: string): Promise<Submission[]>;
   getSubmissionsByQuizIds(quizIds: string[]): Promise<Submission[]>;
@@ -95,19 +96,30 @@ const jsonStore: Store = {
 
   async getQuizzesByAdmin(adminId) {
     const db = readJsonDb();
-    return db.quizzes.filter((q) => q.adminId === adminId);
+    return db.quizzes.filter((q) => q.adminId === adminId).map(withResultUrl);
   },
 
   async getQuizById(quizId) {
     const db = readJsonDb();
-    return db.quizzes.find((q) => q.id === quizId);
+    const quiz = db.quizzes.find((q) => q.id === quizId);
+    return quiz ? withResultUrl(quiz) : undefined;
   },
 
   async createQuiz(quiz) {
     const db = readJsonDb();
-    db.quizzes.push(quiz);
+    const stored: Quiz = { ...quiz, resultUrl: quiz.resultUrl ?? null };
+    db.quizzes.push(stored);
     writeJsonDb(db);
-    return quiz;
+    return stored;
+  },
+
+  async updateQuizResultUrl(quizId, adminId, resultUrl) {
+    const db = readJsonDb();
+    const quiz = db.quizzes.find((q) => q.id === quizId && q.adminId === adminId);
+    if (!quiz) return null;
+    quiz.resultUrl = resultUrl;
+    writeJsonDb(db);
+    return withResultUrl(quiz);
   },
 
   async deleteQuiz(quizId, adminId) {
@@ -177,6 +189,7 @@ interface QuizRow {
   title: string;
   form_url: string;
   encoded_url: string;
+  result_url: string | null;
   created_at: Date | string;
 }
 
@@ -207,7 +220,14 @@ const toQuiz = (row: QuizRow): Quiz => ({
   title: row.title,
   formUrl: row.form_url,
   encodedUrl: row.encoded_url,
+  resultUrl: row.result_url ?? null,
   createdAt: iso(row.created_at),
+});
+
+/** Quizzes written before resultUrl existed simply have none. */
+const withResultUrl = (quiz: Quiz): Quiz => ({
+  ...quiz,
+  resultUrl: quiz.resultUrl ?? null,
 });
 
 const toSubmission = (row: SubmissionRow): Submission => ({
@@ -268,11 +288,21 @@ function createPostgresStore(connectionString: string): Store {
 
     async createQuiz(quiz) {
       const rows = await sql<QuizRow[]>`
-        insert into quizzes (id, admin_id, title, form_url, encoded_url, created_at)
-        values (${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl}, ${quiz.encodedUrl}, ${quiz.createdAt})
+        insert into quizzes (id, admin_id, title, form_url, encoded_url, result_url, created_at)
+        values (${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl}, ${quiz.encodedUrl}, ${quiz.resultUrl ?? null}, ${quiz.createdAt})
         returning *
       `;
       return toQuiz(rows[0]);
+    },
+
+    async updateQuizResultUrl(quizId, adminId, resultUrl) {
+      const rows = await sql<QuizRow[]>`
+        update quizzes
+        set result_url = ${resultUrl}
+        where id = ${quizId} and admin_id = ${adminId}
+        returning *
+      `;
+      return rows[0] ? toQuiz(rows[0]) : null;
     },
 
     async deleteQuiz(quizId, adminId) {
@@ -401,6 +431,14 @@ export function getQuizById(quizId: string): Promise<Quiz | undefined> {
 
 export function createQuiz(quiz: Quiz): Promise<Quiz> {
   return getStore().createQuiz(quiz);
+}
+
+export function updateQuizResultUrl(
+  quizId: string,
+  adminId: string,
+  resultUrl: string | null
+): Promise<Quiz | null> {
+  return getStore().updateQuizResultUrl(quizId, adminId, resultUrl);
 }
 
 export function deleteQuiz(quizId: string, adminId: string): Promise<boolean> {

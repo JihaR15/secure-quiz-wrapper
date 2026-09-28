@@ -3,23 +3,17 @@
 import Link from "next/link";
 import { ArrowDown01Icon, ArrowRight01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
-import { Threads } from "@/components/react-bits/threads";
+import { SilkBackground } from "@/components/react-bits/silk-background";
 import { ScrollCue } from "@/components/site/scroll-cue";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { BentoGrid } from "@/components/site/bento-grid";
 import { HowItWorks } from "@/components/site/how-it-works";
-import { useLanguage, useTheme } from "@/components/providers";
+import { useLanguage } from "@/components/providers";
 
 export default function LandingPage() {
   const { t, language } = useLanguage();
-  const { theme } = useTheme();
   const copy = t;
-
-  // White silk on the dark canvas, ink on paper — the shader reads the uniform
-  // every frame, so the switch is a cross-fade rather than a remount.
-  const threadColor: [number, number, number] =
-    theme === "dark" ? [0.82, 0.96, 0.89] : [0.11, 0.13, 0.12];
 
   return (
     <div className="relative flex min-h-svh flex-col overflow-x-clip bg-background">
@@ -33,14 +27,7 @@ export default function LandingPage() {
             className="absolute inset-0 lg:inset-y-0 lg:left-[46%] lg:right-0"
           >
             <div className="absolute inset-0 opacity-90 [mask-image:radial-gradient(115%_85%_at_62%_42%,#000_38%,transparent_78%)] lg:[mask-image:linear-gradient(to_left,#000_52%,transparent_96%)]">
-              <Threads
-                className="size-full"
-                color={threadColor}
-                amplitude={1.1}
-                distance={0}
-                speed={1}
-                enableMouseInteraction
-              />
+              <SilkBackground className="size-full" />
             </div>
           </div>
 

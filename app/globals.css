@@ -148,6 +148,56 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+ * Silk hero background
+ *
+ * Layered repeating gradients standing in for a per-pixel noise shader. Both
+ * layers animate transform and opacity only, so they stay on the compositor.
+ * ------------------------------------------------------------------------- */
+
+@utility silk-warp {
+  background-image:
+    repeating-linear-gradient(
+      68deg,
+      color-mix(in oklch, var(--foreground) 9%, transparent) 0 1px,
+      transparent 1px 5px
+    ),
+    repeating-linear-gradient(
+      114deg,
+      color-mix(in oklch, var(--foreground) 5%, transparent) 0 1px,
+      transparent 1px 9px
+    ),
+    radial-gradient(
+      70% 58% at 62% 40%,
+      color-mix(in oklch, var(--foreground) 8%, transparent),
+      transparent 72%
+    );
+  background-size: 100% 100%, 100% 100%, 100% 100%;
+  animation: silk-drift 34s linear infinite;
+}
+
+@utility silk-warp-slow {
+  background-image: repeating-linear-gradient(
+    82deg,
+    color-mix(in oklch, var(--foreground) 4%, transparent) 0 1px,
+    transparent 1px 14px
+  );
+  opacity: 0.75;
+  animation: silk-drift 61s linear infinite reverse;
+}
+
+/* Overscaled on every side so the drift never exposes an edge. The wrapper
+   clips, otherwise a transform past 100% widens the scroll box and shows up
+   as a stray horizontal scrollbar. */
+@keyframes silk-drift {
+  from {
+    transform: translate3d(-2%, -1.2%, 0) rotate(0.001deg) scale(1.09);
+  }
+  to {
+    transform: translate3d(2%, 1.2%, 0) rotate(0.001deg) scale(1.12);
+  }
+}
+
 @utility hairline-grid {
   background-image: linear-gradient(
       to right,
@@ -254,7 +304,9 @@
 
   .cue-track,
   .cue-drop,
-  .caret {
+  .caret,
+  .silk-warp,
+  .silk-warp-slow {
     animation: none;
   }
 }

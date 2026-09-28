@@ -12,6 +12,8 @@ export interface Quiz {
   title: string;
   formUrl: string;
   encodedUrl: string;
+  /** Optional link to the published results sheet, supplied by the teacher. */
+  resultUrl: string | null;
   createdAt: string;
 }
 

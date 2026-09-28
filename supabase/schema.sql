@@ -22,8 +22,13 @@ create table if not exists quizzes (
   title       text not null,
   form_url    text not null,
   encoded_url text not null,
+  result_url  text,
   created_at  timestamptz not null default now()
 );
+
+-- The results link is optional, so rows written before this column existed
+-- are backfilled here. Safe to run repeatedly.
+alter table quizzes add column if not exists result_url text;
 
 create index if not exists quizzes_admin_id_created_at_idx
   on quizzes (admin_id, created_at);

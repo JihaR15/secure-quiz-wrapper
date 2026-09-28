@@ -54,12 +54,13 @@ async function main() {
 
     for (const quiz of quizzes) {
       await tx`
-        insert into quizzes (id, admin_id, title, form_url, encoded_url, created_at)
-        values (${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl}, ${quiz.encodedUrl}, ${quiz.createdAt})
+        insert into quizzes (id, admin_id, title, form_url, encoded_url, result_url, created_at)
+        values (${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl}, ${quiz.encodedUrl}, ${quiz.resultUrl ?? null}, ${quiz.createdAt})
         on conflict (id) do update set
           title = excluded.title,
           form_url = excluded.form_url,
-          encoded_url = excluded.encoded_url
+          encoded_url = excluded.encoded_url,
+          result_url = excluded.result_url
       `;
     }
     console.log(`quizzes     : ${quizzes.length}`);

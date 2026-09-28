@@ -9,10 +9,22 @@ export function isTheme(value: unknown): value is Theme {
   return value === "dark" || value === "light";
 }
 
+/**
+ * The exam runner defaults to light. The form underneath is a Google Form and
+ * almost always renders light, so a dark shell around it is jarring, and a
+ * lit page is the least suspicious thing to put in front of a student. An
+ * explicit choice in localStorage still wins.
+ */
+function defaultThemeForPath(pathname: string): Theme {
+  return pathname.startsWith("/quiz") ? "light" : "dark";
+}
+
 export function getInitialTheme(): Theme {
   if (typeof window === "undefined") return "dark";
   const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
   if (isTheme(saved)) return saved;
+  const routeDefault = defaultThemeForPath(window.location.pathname);
+  if (routeDefault === "light") return "light";
   return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
@@ -37,4 +49,4 @@ export function applyTheme(theme: Theme): void {
  */
 export const themeInitScript = `(function(){try{var s=localStorage.getItem(${JSON.stringify(
   THEME_STORAGE_KEY,
-)});var t=(s==="dark"||s==="light")?s:(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");var r=document.documentElement;r.classList.remove("dark","light");r.classList.add(t);r.style.colorScheme=t;}catch(e){}})();`;
+)});var onRunner=location.pathname.indexOf("/quiz")===0;var t=(s==="dark"||s==="light")?s:(onRunner?"light":(window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"));var r=document.documentElement;r.classList.remove("dark","light");r.classList.add(t);r.style.colorScheme=t;}catch(e){}})();`;
