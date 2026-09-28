@@ -44,6 +44,10 @@ export function generateExcelReport(
     { wch: 24 }, // Aktivitas Terakhir
   ];
 
+  // Set AutoFilter on header columns
+  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:J1");
+  worksheet["!autofilter"] = { ref: XLSX.utils.encode_range(range) };
+
   const workbook = XLSX.utils.book_new();
   const safeSheetName = quizTitle.substring(0, 30).replace(/[:\\/?*\[\]]/g, "") || "Laporan Kuis";
   XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
