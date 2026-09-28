@@ -60,6 +60,36 @@ function QuizContent() {
     }
   }, [rawFormParam]);
 
+  // Session restoration on page refresh
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storageKey = `quiz_session_${quizIdParam || "default"}`;
+
+    try {
+      const saved = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data && data.participantName && data.submissionId) {
+          setParticipantName(data.participantName);
+          setSubmissionId(data.submissionId);
+          setViolationCount(data.violationCount || 0);
+          if (data.violationBreakdown) {
+            setViolationBreakdown(data.violationBreakdown);
+          }
+          setIsNameGateOpen(false);
+
+          // 3-second grace period after session restoration
+          isGracePeriodRef.current = true;
+          setTimeout(() => {
+            isGracePeriodRef.current = false;
+          }, 3000);
+        }
+      }
+    } catch {
+      // Storage unavailable or parsing error
+    }
+  }, [quizIdParam]);
+
   // Handle participant name submission
   const handleNameSubmit = async (name: string) => {
     setParticipantName(name);
@@ -82,7 +112,21 @@ function QuizContent() {
       });
       const data = await res.json();
       if (data.success && data.submission) {
-        setSubmissionId(data.submission.id);
+        const subId = data.submission.id;
+        setSubmissionId(subId);
+
+        const storageKey = `quiz_session_${quizIdParam || "default"}`;
+        const sessionPayload = {
+          submissionId: subId,
+          participantName: name,
+          quizId: quizIdParam || "default_quiz",
+          violationCount: 0,
+          violationBreakdown: { tab: 0, window: 0, clipboard: 0, contextmenu: 0 },
+        };
+        try {
+          sessionStorage.setItem(storageKey, JSON.stringify(sessionPayload));
+          localStorage.setItem(storageKey, JSON.stringify(sessionPayload));
+        } catch {}
       }
     } catch {
       // Fallback
@@ -105,6 +149,13 @@ function QuizContent() {
     if (typeof document !== "undefined" && document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
+
+    const storageKey = `quiz_session_${quizIdParam || "default"}`;
+    try {
+      sessionStorage.removeItem(storageKey);
+      localStorage.removeItem(storageKey);
+    } catch {}
+
     showFinishConfirmRef.current = false;
     setShowFinishConfirm(false);
     setIsCompleted(true);
@@ -112,6 +163,21 @@ function QuizContent() {
 
   const syncViolation = React.useCallback(
     (count: number, breakdown: ViolationBreakdown) => {
+      const storageKey = `quiz_session_${quizIdParam || "default"}`;
+      if (participantName && submissionId) {
+        try {
+          const payload = {
+            submissionId,
+            participantName,
+            quizId: quizIdParam || "default_quiz",
+            violationCount: count,
+            violationBreakdown: breakdown,
+          };
+          sessionStorage.setItem(storageKey, JSON.stringify(payload));
+          localStorage.setItem(storageKey, JSON.stringify(payload));
+        } catch {}
+      }
+
       if (submissionId) {
         fetch("/api/submissions", {
           method: "PATCH",
@@ -124,7 +190,7 @@ function QuizContent() {
         }).catch(() => {});
       }
     },
-    [submissionId],
+    [submissionId, participantName, quizIdParam],
   );
 
   const triggerViolation = React.useCallback(
