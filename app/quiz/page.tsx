@@ -43,7 +43,6 @@ function QuizContent() {
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const overlayRef = useRef<HTMLDivElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
   const showFinishConfirmRef = useRef<boolean>(false);
@@ -462,62 +461,15 @@ function QuizContent() {
         onClose={() => setShowToast(false)}
       />
 
-      {/* Embedded Quiz Iframe with Right-Click & Copy-Paste Overlay Interceptor */}
+      {/* Embedded Quiz Iframe */}
       {targetUrl && !isNameGateOpen ? (
-        <div className="relative w-full h-full">
-          <div
-            ref={overlayRef}
-            className="absolute inset-0 z-10 select-none"
-            style={{
-              WebkitUserSelect: "none",
-              WebkitTouchCallout: "none",
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              triggerViolation("contextmenu");
-            }}
-            onMouseDown={(e) => {
-              if (e.button === 2 || e.button === 1) {
-                e.preventDefault();
-                e.stopPropagation();
-                triggerViolation("contextmenu");
-                return;
-              }
-              // Temporarily pass left-click down to the form iframe
-              if (overlayRef.current) {
-                overlayRef.current.style.pointerEvents = "none";
-                setTimeout(() => {
-                  if (overlayRef.current) {
-                    overlayRef.current.style.pointerEvents = "auto";
-                  }
-                }, 350);
-              }
-            }}
-            onCopy={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              triggerViolation("clipboard");
-            }}
-            onPaste={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              triggerViolation("clipboard");
-            }}
-            onCut={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              triggerViolation("clipboard");
-            }}
-          />
-          <iframe
-            ref={iframeRef}
-            src={targetUrl}
-            className="w-full h-full border-0 bg-white"
-            title="Secure Assessment Session"
-            sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
-          />
-        </div>
+        <iframe
+          ref={iframeRef}
+          src={targetUrl}
+          className="w-full h-full border-0 bg-white"
+          title="Secure Assessment Session"
+          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+        />
       ) : (
         <div className="w-full h-full flex items-center justify-center p-6 bg-neutral-950">
           <Card className="max-w-md w-full space-y-6 text-center p-8 bg-neutral-900 border-neutral-800">
