@@ -137,6 +137,11 @@ type ThreadsProps = {
 const DESKTOP_RENDER_BUDGET = 1920;
 const MOBILE_RENDER_BUDGET = 1100;
 
+// Phones get half the frame rate. The silk drifts slowly enough that 30fps is
+// indistinguishable, and it halves the GPU time on the devices least able
+// to spare it.
+const COARSE_FRAME_INTERVAL = 1000 / 30;
+
 export function Threads({
   color = [1, 1, 1],
   amplitude = 1,
@@ -270,9 +275,12 @@ export function Threads({
       // Render a single representative frame, then leave the GPU alone.
       draw(4);
     } else {
+      let lastDraw = 0;
       const loop = (now: number) => {
         frame = requestAnimationFrame(loop);
         if (!isVisible || document.hidden) return;
+        if (coarsePointer && now - lastDraw < COARSE_FRAME_INTERVAL) return;
+        lastDraw = now;
         draw((now * 0.001 * propsRef.current.speed) % 100000);
       };
       frame = requestAnimationFrame(loop);

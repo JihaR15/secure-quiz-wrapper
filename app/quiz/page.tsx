@@ -23,6 +23,7 @@ import {
   ArrowLeft01Icon,
   CheckmarkCircle01Icon,
   Globe02Icon,
+  StopCircleIcon,
 } from "hugeicons-react";
 
 const VIOLATION_COOLDOWN_MS = 1500;
@@ -235,32 +236,40 @@ function QuizContent() {
     <div className="relative h-svh w-full overflow-hidden bg-background select-none">
       <NameGateModal isOpen={isNameGateOpen} onSubmit={handleNameSubmit} />
 
-      {/* One toolbar, so the badge and controls can never overlap. */}
+      {/* Finish sits on the left so the dominant hand never crosses the form;
+          the language switch and the live counter stay on the right. */}
       {!isNameGateOpen ? (
-        <div className="fixed top-3 right-3 z-30 flex items-center gap-2 sm:top-4 sm:right-4 sm:gap-1.5">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowFinishConfirm(true)}
-            className="h-10 gap-2 bg-destructive/90 px-3 text-destructive-foreground backdrop-blur-md hover:bg-destructive sm:h-8 sm:px-2.5"
-          >
-            <span className="sr-only sm:not-sr-only">{t.finishExam}</span>
-          </Button>
-          <div className="flex items-center rounded-lg border border-border bg-background/90 backdrop-blur-md">
-            <LanguageToggle className="h-10 px-2 sm:h-8" />
-            <button
+        <>
+          <div className="fixed top-3 left-3 z-30 sm:top-4 sm:left-4">
+            <Button
               type="button"
-              onClick={() => setLanguage(language === "id" ? "en" : "id")}
-              className="flex h-10 items-center gap-1.5 border-l border-border px-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8"
-              title={t.languageLabel}
-              aria-label={t.languageLabel}
+              variant="destructive"
+              onClick={() => setShowFinishConfirm(true)}
+              title={t.finishExam}
+              className="size-10 rounded-lg bg-destructive/90 p-0 text-destructive-foreground shadow-none backdrop-blur-md hover:bg-destructive sm:h-9 sm:w-auto sm:gap-2 sm:px-3.5 sm:text-sm sm:font-medium"
             >
-              <Globe02Icon className="size-3.5" />
-              {language.toUpperCase()}
-            </button>
+              <StopCircleIcon className="size-4" />
+              <span className="hidden sm:inline">{t.finishExam}</span>
+            </Button>
           </div>
-          <SecurityBadge violationCount={violationCount} />
-        </div>
+
+          <div className="fixed top-3 right-3 z-30 flex items-center gap-2 sm:top-4 sm:right-4 sm:gap-1.5">
+            <div className="flex items-center rounded-lg border border-border bg-background/90 backdrop-blur-md">
+              <LanguageToggle className="h-10 px-2 sm:h-8" />
+              <button
+                type="button"
+                onClick={() => setLanguage(language === "id" ? "en" : "id")}
+                className="flex h-10 items-center gap-1.5 border-l border-border px-2 font-mono text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8"
+                title={t.languageLabel}
+                aria-label={t.languageLabel}
+              >
+                <Globe02Icon className="size-3.5" />
+                {language.toUpperCase()}
+              </button>
+            </div>
+            <SecurityBadge violationCount={violationCount} />
+          </div>
+        </>
       ) : null}
 
       <Dialog open={showFinishConfirm} onOpenChange={setShowFinishConfirm}>

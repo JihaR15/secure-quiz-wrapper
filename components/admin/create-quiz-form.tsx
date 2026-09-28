@@ -35,7 +35,7 @@ export function CreateQuizForm({
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-12">
-        <div className="space-y-2 sm:col-span-4">
+        <div className="space-y-2 sm:col-span-6 lg:col-span-4">
           <Label htmlFor={titleId} className="text-xs text-muted-foreground">
             {t.quizTitle}
           </Label>
@@ -50,7 +50,7 @@ export function CreateQuizForm({
           />
         </div>
 
-        <div className="space-y-2 sm:col-span-6">
+        <div className="space-y-2 sm:col-span-6 lg:col-span-6">
           <Label htmlFor={urlId} className="text-xs text-muted-foreground">
             {t.targetUrl}
           </Label>
@@ -68,11 +68,11 @@ export function CreateQuizForm({
           />
         </div>
 
-        <div className="flex items-end sm:col-span-2">
+        <div className="flex items-end sm:col-span-12 lg:col-span-2">
           <Button
             type="submit"
             disabled={submitting}
-            className="h-10 w-full gap-2 whitespace-nowrap"
+            className="h-10 w-full gap-2 lg:whitespace-nowrap"
           >
             {submitting ? t.creating : t.generateQuiz}
             {submitting ? null : <ArrowRight01Icon className="size-4" />}

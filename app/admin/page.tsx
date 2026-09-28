@@ -19,12 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DotGrid } from "@/components/react-bits/dot-grid";
 import { CreateQuizForm } from "@/components/admin/create-quiz-form";
 import { QuizList } from "@/components/admin/quiz-list";
 import { QuizDetail } from "@/components/admin/quiz-detail";
 import { LanguageToggle } from "@/components/site/language-toggle";
 import { ThemeToggle } from "@/components/site/theme-toggle";
-import { useLanguage } from "@/components/providers";
+import { useLanguage, useTheme } from "@/components/providers";
 import { getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
 import type { Submission } from "@/lib/db";
 
@@ -62,6 +63,7 @@ function DashboardSkeleton() {
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { t, language } = useLanguage();
+  const { theme } = useTheme();
   const locale = LOCALE[language];
 
   const [quizzes, setQuizzes] = React.useState<QuizWithSubmissions[]>([]);
@@ -228,6 +230,24 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="flex min-h-svh flex-col overflow-x-clip bg-background">
+      {/* React Bits DotGrid: a magnetic dot field instead of the landing hero\'s
+          Threads shader. It stays out of the way — masked to the upper right and
+          painted under the cards — and it costs a canvas 2D pass, not a fragment
+          shader evaluating Perlin noise 40 times per pixel. */}
+      <div className="fixed inset-0 -z-10">
+        <DotGrid
+          className="size-full [mask-image:radial-gradient(120%_85%_at_78%_0%,#000_10%,transparent_72%)]"
+          dotSize={theme === "dark" ? 3 : 2.5}
+          gap={theme === "dark" ? 30 : 28}
+          baseColor={
+            theme === "dark" ? "rgba(240,244,238,0.16)" : "rgba(18,22,18,0.11)"
+          }
+          activeColor={
+            theme === "dark" ? "rgba(126,231,183,0.95)" : "rgba(13,120,86,0.85)"
+          }
+        />
+      </div>
+
       <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-6">
           <Link

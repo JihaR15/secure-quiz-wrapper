@@ -16,8 +16,11 @@ const DIMENSIONS = { width: 855, height: 600 } as const;
  * sits at the same optical size in both themes.
  */
 export function Logo({ className, priority, alt = "Secure Quiz Wrapper" }: LogoProps) {
+  // The span is inline-flex so the marks size to their own content. A bare
+  // fragment let `align-items: stretch` from a column flex parent (the quiz
+  // name gate) squash the width and render the mark square.
   return (
-    <>
+    <span className="inline-flex shrink-0 items-start">
       <Image
         src="/logo.png"
         alt={alt}
@@ -32,7 +35,7 @@ export function Logo({ className, priority, alt = "Secure Quiz Wrapper" }: LogoP
         priority={priority}
         className={cn("h-7 w-auto dark:hidden", className)}
       />
-    </>
+    </span>
   );
 }
 
