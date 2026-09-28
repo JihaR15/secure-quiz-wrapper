@@ -11,7 +11,7 @@ type SiteFooterProps = {
 export function SiteFooter({ language, note, product }: SiteFooterProps) {
   return (
     <footer className="border-t border-border/70">
-      <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:items-start md:justify-between">
+      <div className="flex w-full flex-col gap-6 px-6 py-10 sm:px-10 md:px-12 lg:px-16 xl:px-20 md:flex-row md:items-start md:justify-between">
         <div className="space-y-3">
           <Link href="/" className="inline-flex items-center" aria-label={product}>
             <Logo className="h-6" />

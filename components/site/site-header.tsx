@@ -20,7 +20,7 @@ export function SiteHeader({ cta }: { cta: { href: string; label: string } }) {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-3 px-4 sm:px-6">
+      <div className="flex h-16 w-full items-center justify-between gap-3 px-6 sm:px-10 md:px-12 lg:px-16 xl:px-20">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2.5"

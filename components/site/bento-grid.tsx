@@ -77,7 +77,7 @@ export function BentoGrid() {
 
   return (
     <section id="fitur" className="scroll-mt-20 border-t border-border/70">
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-20 sm:px-6 sm:py-28">
+      <div className="w-full px-6 py-20 sm:px-10 md:px-12 lg:px-16 xl:px-20 sm:py-28">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
           <div className="lg:col-span-5">
             <div className="flex items-center gap-3">

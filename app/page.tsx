@@ -37,7 +37,7 @@ export default function LandingPage() {
             className="hairline-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(90%_70%_at_20%_80%,#000,transparent_75%)]"
           />
 
-          <div className="relative z-10 mx-auto flex w-full max-w-[1400px] flex-1 flex-col justify-end px-4 pb-8 pt-12 sm:px-6 sm:pb-10 lg:pb-12">
+          <div className="relative z-10 flex w-full flex-1 flex-col justify-end px-6 pb-8 pt-12 sm:px-10 md:px-12 lg:px-16 xl:px-20 sm:pb-10 lg:pb-12">
             <div className="max-w-[46rem] space-y-6 lg:space-y-7">
               <div className="flex items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-primary" />
