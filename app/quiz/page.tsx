@@ -96,7 +96,7 @@ function QuizContent() {
     setIsCompleted(true);
   };
 
-  // Anti-Cheat Event Listeners for Tab Switch, Alt+Tab, Copy/Paste, and Right-Click
+  // Anti-Cheat Event Listeners for Tab Switch, Alt+Tab, Copy/Paste, Right-Click, and Mobile Long-Press
   useEffect(() => {
     if (isNameGateOpen || isCompleted) return;
 
@@ -172,48 +172,117 @@ function QuizContent() {
       }, 150);
     };
 
-    // 4. Prevent context menu (right click)
-    const handleContextMenu = (e: MouseEvent) => {
+    // 4. Context menu (Right-click & mobile long-press menu)
+    const handleContextMenu = (e: Event) => {
       e.preventDefault();
       triggerViolation("contextmenu");
     };
 
-    // 5. Prevent copy, cut, paste
-    const handleCopyCutPaste = (e: ClipboardEvent) => {
+    // 5. Mouse right-click interceptor (button === 2)
+    const handleMouseDownUp = (e: MouseEvent) => {
+      if (e.button === 2) {
+        e.preventDefault();
+        triggerViolation("contextmenu");
+      }
+    };
+
+    // 6. Copy, cut, paste interceptor
+    const handleCopyCutPaste = (e: Event) => {
       e.preventDefault();
       triggerViolation("clipboard");
     };
 
-    // 6. Intercept keyboard shortcuts
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.key === "F12" ||
-        (e.ctrlKey && ["c", "v", "x", "u", "s", "p", "a"].includes(e.key.toLowerCase())) ||
-        (e.metaKey && ["c", "v", "x", "u", "s", "p", "a"].includes(e.key.toLowerCase()))
-      ) {
-        e.preventDefault();
-        triggerViolation("clipboard");
+    // 7. Mobile long-press detector ("tahan di HP")
+    let touchTimer: NodeJS.Timeout | null = null;
+    let startX = 0;
+    let startY = 0;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length > 1) {
+        triggerViolation("contextmenu");
+        return;
+      }
+      const touch = e.touches[0];
+      if (touch) {
+        startX = touch.clientX;
+        startY = touch.clientY;
+      }
+      if (touchTimer) clearTimeout(touchTimer);
+      touchTimer = setTimeout(() => {
+        triggerViolation("contextmenu");
+      }, 400);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (touch) {
+        const deltaX = Math.abs(touch.clientX - startX);
+        const deltaY = Math.abs(touch.clientY - startY);
+        if (deltaX > 8 || deltaY > 8) {
+          if (touchTimer) clearTimeout(touchTimer);
+        }
       }
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    window.addEventListener("pagehide", handlePageHide);
-    window.addEventListener("blur", handleWindowBlur);
-    document.addEventListener("contextmenu", handleContextMenu);
-    document.addEventListener("copy", handleCopyCutPaste);
-    document.addEventListener("cut", handleCopyCutPaste);
-    document.addEventListener("paste", handleCopyCutPaste);
-    document.addEventListener("keydown", handleKeyDown);
+    const handleTouchEndCancel = () => {
+      if (touchTimer) clearTimeout(touchTimer);
+    };
+
+    // 8. Intercept keyboard shortcuts
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase();
+      if (
+        key === "f12" ||
+        key === "contextmenu" ||
+        (e.ctrlKey && ["c", "v", "x", "u", "s", "p", "a"].includes(key)) ||
+        (e.metaKey && ["c", "v", "x", "u", "s", "p", "a"].includes(key)) ||
+        (e.shiftKey && (key === "insert" || key === "f10"))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        triggerViolation(key === "c" || key === "v" || key === "x" ? "clipboard" : "contextmenu");
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange, true);
+    window.addEventListener("pagehide", handlePageHide, true);
+    window.addEventListener("blur", handleWindowBlur, true);
+    window.addEventListener("contextmenu", handleContextMenu, true);
+    document.addEventListener("contextmenu", handleContextMenu, true);
+    window.addEventListener("mousedown", handleMouseDownUp, true);
+    window.addEventListener("mouseup", handleMouseDownUp, true);
+    window.addEventListener("copy", handleCopyCutPaste, true);
+    window.addEventListener("cut", handleCopyCutPaste, true);
+    window.addEventListener("paste", handleCopyCutPaste, true);
+    document.addEventListener("copy", handleCopyCutPaste, true);
+    document.addEventListener("cut", handleCopyCutPaste, true);
+    document.addEventListener("paste", handleCopyCutPaste, true);
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("touchstart", handleTouchStart, true);
+    window.addEventListener("touchmove", handleTouchMove, true);
+    window.addEventListener("touchend", handleTouchEndCancel, true);
+    window.addEventListener("touchcancel", handleTouchEndCancel, true);
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      window.removeEventListener("pagehide", handlePageHide);
-      window.removeEventListener("blur", handleWindowBlur);
-      document.removeEventListener("contextmenu", handleContextMenu);
-      document.removeEventListener("copy", handleCopyCutPaste);
-      document.removeEventListener("cut", handleCopyCutPaste);
-      document.removeEventListener("paste", handleCopyCutPaste);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("visibilitychange", handleVisibilityChange, true);
+      window.removeEventListener("pagehide", handlePageHide, true);
+      window.removeEventListener("blur", handleWindowBlur, true);
+      window.removeEventListener("contextmenu", handleContextMenu, true);
+      document.removeEventListener("contextmenu", handleContextMenu, true);
+      window.removeEventListener("mousedown", handleMouseDownUp, true);
+      window.removeEventListener("mouseup", handleMouseDownUp, true);
+      window.removeEventListener("copy", handleCopyCutPaste, true);
+      window.removeEventListener("cut", handleCopyCutPaste, true);
+      window.removeEventListener("paste", handleCopyCutPaste, true);
+      document.removeEventListener("copy", handleCopyCutPaste, true);
+      document.removeEventListener("cut", handleCopyCutPaste, true);
+      document.removeEventListener("paste", handleCopyCutPaste, true);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("touchstart", handleTouchStart, true);
+      window.removeEventListener("touchmove", handleTouchMove, true);
+      window.removeEventListener("touchend", handleTouchEndCancel, true);
+      window.removeEventListener("touchcancel", handleTouchEndCancel, true);
+      if (touchTimer) clearTimeout(touchTimer);
     };
   }, [isNameGateOpen, isCompleted, submissionId]);
 
@@ -281,7 +350,10 @@ function QuizContent() {
   }
 
   return (
-    <div className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans">
+    <div
+      className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans"
+      style={{ WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+    >
       {/* Name Registration & Rules Modal Gate */}
       <NameGateModal
         isOpen={isNameGateOpen}
@@ -290,28 +362,34 @@ function QuizContent() {
 
       {/* Floating Header Controls */}
       {!isNameGateOpen && (
-        <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setShowFinishConfirm(true)}
-            className="shadow-xl font-semibold text-xs py-2 px-3"
-          >
-            <Logout01Icon className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {language === "id" ? "Selesai Ujian" : "Finish Exam"}
-            </span>
-          </Button>
+        <>
+          {/* Button Keluar di sebelah Kiri */}
+          <div className="fixed top-4 left-4 z-30 flex items-center gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowFinishConfirm(true)}
+              className="shadow-xl font-semibold text-xs py-2 px-3"
+            >
+              <Logout01Icon className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {language === "id" ? "Selesai Ujian" : "Finish Exam"}
+              </span>
+            </Button>
+          </div>
 
-          <button
-            onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
-            className="p-2 px-3 rounded-2xl bg-neutral-950/90 border border-neutral-800 shadow-xl backdrop-blur-md text-xs font-mono text-neutral-300 hover:text-white transition-colors flex items-center gap-1.5"
-          >
-            <Globe02Icon className="w-3.5 h-3.5 text-neutral-400" />
-            {language.toUpperCase()}
-          </button>
-          <SecurityBadge violationCount={violationCount} />
-        </div>
+          {/* Controls di sebelah Kanan */}
+          <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
+            <button
+              onClick={() => setLanguage((l) => (l === "id" ? "en" : "id"))}
+              className="p-2 px-3 rounded-2xl bg-neutral-950/90 border border-neutral-800 shadow-xl backdrop-blur-md text-xs font-mono text-neutral-300 hover:text-white transition-colors flex items-center gap-1.5"
+            >
+              <Globe02Icon className="w-3.5 h-3.5 text-neutral-400" />
+              {language.toUpperCase()}
+            </button>
+            <SecurityBadge violationCount={violationCount} />
+          </div>
+        </>
       )}
 
       {/* Finish Confirmation Modal */}
