@@ -44,6 +44,7 @@ function QuizContent() {
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
+  const lastTabSwitchTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
   const showFinishConfirmRef = useRef<boolean>(false);
   const lastFinishCancelTimeRef = useRef<number>(0);
@@ -229,14 +230,11 @@ function QuizContent() {
   useEffect(() => {
     if (isNameGateOpen || isCompleted) return;
 
-    // 1. Tab switch vs Window switch detection (visibilitychange)
+    // 1. Tab switch (visibilitychange)
     const handleVisibilityChange = () => {
       if (document.hidden || document.visibilityState === "hidden") {
-        if (!document.hasFocus()) {
-          triggerViolation("window");
-        } else {
-          triggerViolation("tab");
-        }
+        lastTabSwitchTimeRef.current = Date.now();
+        triggerViolation("tab");
       }
     };
 
@@ -250,6 +248,11 @@ function QuizContent() {
       setTimeout(() => {
         if (isGracePeriodRef.current || showFinishConfirmRef.current || isCompletedRef.current) return;
         if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
+
+        // If visibilitychange already recorded a tab switch in the last 400ms, ignore window blur
+        if (Date.now() - lastTabSwitchTimeRef.current < 400) {
+          return;
+        }
 
         if (!document.hasFocus()) {
           triggerViolation("window");
