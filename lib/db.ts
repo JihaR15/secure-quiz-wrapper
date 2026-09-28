@@ -346,6 +346,9 @@ function resolveStore(): Store {
     );
   }
 
+  // Supabase names this POSTGRES_URL, Vercel Postgres names it POSTGRES_URL
+  // too, and everyone else calls it DATABASE_URL. The 6543 transaction pooler
+  // is deliberately not supported: it cannot hold prepared statements.
   const connectionString =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
@@ -353,6 +356,13 @@ function resolveStore(): Store {
     "";
 
   if (!connectionString) return jsonStore;
+
+  if (connectionString.includes(":6543")) {
+    throw new Error(
+      "DATABASE_URL memakai port 6543 (transaction pooler). Gunakan Session pooler port 5432."
+    );
+  }
+
   return createPostgresStore(connectionString);
 }
 
