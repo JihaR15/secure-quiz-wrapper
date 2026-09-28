@@ -153,6 +153,9 @@ const id = {
   toastNetworkError: "Terjadi kesalahan jaringan.",
   loadingDashboard: "Memuat dashboard",
   formRequired: "Judul kuis dan URL form wajib diisi.",
+  prevPage: "Sebelumnya",
+  nextPage: "Selanjutnya",
+  perPage: "per halaman",
 
   // Quiz runner
   quizGateTitle: "Data peserta",
@@ -341,6 +344,9 @@ const en: Record<keyof typeof id, string> = {
   toastNetworkError: "Network error.",
   loadingDashboard: "Loading dashboard",
   formRequired: "Quiz title and form URL are required.",
+  prevPage: "Previous",
+  nextPage: "Next",
+  perPage: "per page",
 
   quizGateTitle: "Participant details",
   quizGateSub: "Enter your full name before launching this proctored session.",

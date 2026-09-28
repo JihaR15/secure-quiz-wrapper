@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,7 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Delete02Icon, ArrowDown01Icon, ArrowUp01Icon } from "hugeicons-react";
+import {
+  Delete02Icon,
+  ArrowDown01Icon,
+  ArrowUp01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+} from "hugeicons-react";
 import { useLanguage } from "@/components/providers";
 import { formatTime, riskLevel } from "@/lib/quiz-format";
 import type { Translation } from "@/lib/i18n";
@@ -78,8 +85,23 @@ export function ParticipantTable({
   locale,
   onRequestDelete,
 }: ParticipantTableProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [expandedIds, setExpandedIds] = React.useState<Set<string>>(new Set());
+  const [page, setPage] = React.useState(1);
+  const pageSize = 10;
+
+  const totalPages = Math.max(1, Math.ceil(submissions.length / pageSize));
+
+  // Reset page if bounds change
+  React.useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [submissions.length, totalPages, page]);
+
+  const startIndex = (page - 1) * pageSize;
+  const endIndex = Math.min(submissions.length, startIndex + pageSize);
+  const currentSubmissions = submissions.slice(startIndex, endIndex);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) => {
@@ -117,10 +139,11 @@ export function ParticipantTable({
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {/* Mobile list view */}
       <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border sm:hidden">
-        {submissions.map((submission, index) => {
+        {currentSubmissions.map((submission, index) => {
+          const globalIndex = startIndex + index;
           const risk = riskLevel(submission.violationCount);
           const isExpanded = expandedIds.has(submission.id);
 
@@ -128,7 +151,7 @@ export function ParticipantTable({
             <li key={submission.id} className="flex flex-col p-3.5 space-y-3">
               <div className="flex items-start gap-3">
                 <span className="mt-0.5 font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
-                  {String(index + 1).padStart(2, "0")}
+                  {String(globalIndex + 1).padStart(2, "0")}
                 </span>
 
                 <div className="min-w-0 flex-1 space-y-2">
@@ -216,7 +239,8 @@ export function ParticipantTable({
           </TableHeader>
 
           <TableBody>
-            {submissions.map((submission, index) => {
+            {currentSubmissions.map((submission, index) => {
+              const globalIndex = startIndex + index;
               const risk = riskLevel(submission.violationCount);
               const isExpanded = expandedIds.has(submission.id);
 
@@ -227,7 +251,7 @@ export function ParticipantTable({
                     className="cursor-pointer transition-colors hover:bg-muted/50"
                   >
                     <TableCell className="pl-4 font-mono text-xs tabular-nums text-muted-foreground">
-                      {String(index + 1).padStart(2, "0")}
+                      {String(globalIndex + 1).padStart(2, "0")}
                     </TableCell>
 
                     <TableCell className="font-medium tracking-[-0.01em]">
@@ -302,6 +326,45 @@ export function ParticipantTable({
           </TableBody>
         </Table>
       </div>
-    </>
+
+      {/* Pagination Controls */}
+      {submissions.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <p className="font-mono text-xs text-muted-foreground">
+            {language === "id"
+              ? `Menampilkan ${startIndex + 1}-${endIndex} dari ${submissions.length} peserta`
+              : `Showing ${startIndex + 1}-${endIndex} of ${submissions.length} participants`}
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="h-8 gap-1.5 px-3 text-xs"
+            >
+              <ArrowLeft01Icon className="size-3.5" />
+              <span>{t.prevPage}</span>
+            </Button>
+
+            <span className="font-mono text-xs px-2 text-muted-foreground font-medium">
+              {page} / {totalPages}
+            </span>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="h-8 gap-1.5 px-3 text-xs"
+            >
+              <span>{t.nextPage}</span>
+              <ArrowRight01Icon className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
