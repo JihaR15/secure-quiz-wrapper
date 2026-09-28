@@ -244,6 +244,9 @@ function QuizContent() {
     // 3. Alt+Tab / Window focus loss handler
     const handleWindowBlur = () => {
       setTimeout(() => {
+        if (isGracePeriodRef.current || showFinishConfirmRef.current || isCompletedRef.current) return;
+        if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
+
         if (document.hidden || document.visibilityState === "hidden") {
           triggerViolation("tab");
           return;
@@ -253,13 +256,6 @@ function QuizContent() {
           triggerViolation("window");
           return;
         }
-
-        const active = document.activeElement;
-        if (active && (active.tagName === "IFRAME" || active === iframeRef.current)) {
-          return;
-        }
-
-        triggerViolation("window");
       }, 150);
     };
 
