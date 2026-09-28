@@ -43,6 +43,7 @@ function QuizContent() {
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
   const showFinishConfirmRef = useRef<boolean>(false);
@@ -110,11 +111,8 @@ function QuizContent() {
     setIsCompleted(true);
   };
 
-  // Anti-Cheat Event Listeners for Tab Switch, Alt+Tab, Copy/Paste, Right-Click, and Mobile Long-Press
-  useEffect(() => {
-    if (isNameGateOpen || isCompleted) return;
-
-    const syncViolation = (count: number, breakdown: ViolationBreakdown) => {
+  const syncViolation = React.useCallback(
+    (count: number, breakdown: ViolationBreakdown) => {
       if (submissionId) {
         fetch("/api/submissions", {
           method: "PATCH",
@@ -126,9 +124,12 @@ function QuizContent() {
           }),
         }).catch(() => {});
       }
-    };
+    },
+    [submissionId],
+  );
 
-    const triggerViolation = (type: ViolationType) => {
+  const triggerViolation = React.useCallback(
+    (type: ViolationType) => {
       if (isGracePeriodRef.current || showFinishConfirmRef.current) return;
       if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
 
@@ -151,7 +152,13 @@ function QuizContent() {
       });
 
       setShowToast(true);
-    };
+    },
+    [syncViolation],
+  );
+
+  // Anti-Cheat Event Listeners for Tab Switch, Alt+Tab, Copy/Paste, Right-Click, and Mobile Long-Press
+  useEffect(() => {
+    if (isNameGateOpen || isCompleted) return;
 
     // 1. Tab switch (visibilitychange)
     const handleVisibilityChange = () => {
@@ -299,7 +306,7 @@ function QuizContent() {
       window.removeEventListener("touchcancel", handleTouchEndCancel, true);
       if (touchTimer) clearTimeout(touchTimer);
     };
-  }, [isNameGateOpen, isCompleted, submissionId]);
+  }, [isNameGateOpen, isCompleted, submissionId, triggerViolation]);
 
   // Thank You Screen after completion
   if (isCompleted) {
@@ -455,15 +462,62 @@ function QuizContent() {
         onClose={() => setShowToast(false)}
       />
 
-      {/* Embedded Quiz Iframe */}
+      {/* Embedded Quiz Iframe with Right-Click & Copy-Paste Overlay Interceptor */}
       {targetUrl && !isNameGateOpen ? (
-        <iframe
-          ref={iframeRef}
-          src={targetUrl}
-          className="w-full h-full border-0 bg-white"
-          title="Secure Assessment Session"
-          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
-        />
+        <div className="relative w-full h-full">
+          <div
+            ref={overlayRef}
+            className="absolute inset-0 z-10 select-none"
+            style={{
+              WebkitUserSelect: "none",
+              WebkitTouchCallout: "none",
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              triggerViolation("contextmenu");
+            }}
+            onMouseDown={(e) => {
+              if (e.button === 2 || e.button === 1) {
+                e.preventDefault();
+                e.stopPropagation();
+                triggerViolation("contextmenu");
+                return;
+              }
+              // Temporarily pass left-click down to the form iframe
+              if (overlayRef.current) {
+                overlayRef.current.style.pointerEvents = "none";
+                setTimeout(() => {
+                  if (overlayRef.current) {
+                    overlayRef.current.style.pointerEvents = "auto";
+                  }
+                }, 350);
+              }
+            }}
+            onCopy={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              triggerViolation("clipboard");
+            }}
+            onPaste={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              triggerViolation("clipboard");
+            }}
+            onCut={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              triggerViolation("clipboard");
+            }}
+          />
+          <iframe
+            ref={iframeRef}
+            src={targetUrl}
+            className="w-full h-full border-0 bg-white"
+            title="Secure Assessment Session"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+          />
+        </div>
       ) : (
         <div className="w-full h-full flex items-center justify-center p-6 bg-neutral-950">
           <Card className="max-w-md w-full space-y-6 text-center p-8 bg-neutral-900 border-neutral-800">

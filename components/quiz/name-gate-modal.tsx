@@ -18,6 +18,7 @@ import {
   ArrowExpand01Icon,
   ArrowRight01Icon,
   SmartPhone01Icon,
+  Wifi01Icon,
 } from "hugeicons-react";
 
 type NameGateModalProps = {
@@ -26,6 +27,11 @@ type NameGateModalProps = {
 };
 
 const RULES = [
+  {
+    icon: <Wifi01Icon className="size-4 text-emerald-500" />,
+    titleKey: "ruleInternetTitle" as const,
+    bodyKey: "ruleInternetSub" as const,
+  },
   {
     icon: <SmartPhone01Icon className="size-4 text-warning" />,
     titleKey: "ruleDndTitle" as const,
