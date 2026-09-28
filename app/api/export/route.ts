@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const quiz = getQuizById(quizId);
+  const quiz = await getQuizById(quizId);
   if (!quiz || quiz.adminId !== admin.id) {
     return NextResponse.json(
       { error: "Kuis tidak ditemukan atau Anda tidak memiliki akses." },
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const submissions = getSubmissionsByQuiz(quizId);
+  const submissions = await getSubmissionsByQuiz(quizId);
   const excelBuffer = generateExcelReport(quiz.title, submissions);
 
   const safeFileName = `${quiz.title.replace(/[^a-zA-Z0-9_-]/g, "_")}_Pelanggaran.xlsx`;

@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Secure Quiz Wrapper
 
-## Getting Started
+Wrapper kuis berbasis Google Form dengan monitoring pelanggaran: tab-switch,
+blur, dan keluar fullscreen dicatat per peserta, lalu bisa diekspor ke Excel.
 
-First, run the development server:
+## Arsitektur penyimpanan
+
+`lib/db.ts` adalah satu-satunya lapisan yang menyentuh data, dengan dua backend
+yang berganti lewat antarmuka yang sama:
+
+- **Postgres** (Supabase, Neon, Vercel Postgres) aktif selama `DATABASE_URL`
+  terisi. Inilah yang dipakai di hosting serverless seperti Vercel.
+- **File JSON** di `.data/db.json` dipakai kalau `DATABASE_URL` kosong, supaya
+  pengembangan lokal tetap jalan tanpa konfigurasi apa pun.
+
+Keduanya mengembalikan bentuk data yang identik, termasuk timestamp sebagai
+string ISO, jadi tidak ada kode di atas `lib/db.ts` yang perlu tahu backend mana
+yang sedang hidup.
+
+## Menjalankan secara lokal
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Tanpa konfigurasi tambahan aplikasi langsung memakai `.data/db.json`. Ini cukup
+untuk pengembangan, tetapi **tidak akan berhasil di Vercel atau hosting
+serverless lain**: filesystem di sana read-only dan tidak bertahan antar
+request. Itulah sebabnya `/api/auth/register` membalas 500 ketika dideploy tanpa
+database eksternal.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup Supabase / Postgres
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Buat project di [supabase.com](https://supabase.com).
+2. Jalankan `supabase/schema.sql` di SQL Editor. Aman dijalankan berulang kali.
+3. Salin connection string dari **Project Settings → Database**. Gunakan URI
+   *Session pooler* (port `5432`) yang sudah memuat `?sslmode=require`.
+4. Simpan sebagai `DATABASE_URL` di `.env.local`, lalu di **Vercel → Project
+   Settings → Environment Variables**. Tambahkan juga domain production ke
+   allowed origins bila `npm run dev` dipakai di Vercel.
+5. Opsional, pindahkan data lama dari `.data/db.json`:
 
-## Learn More
+   ```bash
+   DATABASE_URL="postgresql://..." node scripts/migrate-to-postgres.mjs
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+   Script aman dijalankan berulang kali karena memakai `upsert` berdasarkan id.
+   File JSON tetap dipakai sebagai backup.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Semua akses database hanya dari server Next.js lewat connection string. Jangan
+pernah memakai `anon` atau `service_role` key di kode browser: peserta tidak
+boleh bisa membaca atau mengubah data monitoringnya sendiri.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Kontrak API tidak berubah, jadi tidak ada yang perlu disesuaikan di frontend.
 
-## Deploy on Vercel
+### Environment variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Nama | Wajib | Keterangan |
+| --- | --- | --- |
+| `DATABASE_URL` | Untuk deploy | Connection string Postgres/Supabase. Kosongkan untuk memakai `.data/db.json`. |
+| `DATABASE_POOL_MAX` | Tidak | Koneksi per instance serverless, default `2`. |
+| `JWT_SECRET` | Untuk deploy | Kunci penandatangan cookie sesi admin. Buat dengan `openssl rand -base64 48`. |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Perintah
+
+```bash
+npm run dev      # server pengembangan
+npm run build    # build produksi
+npm run lint     # eslint
+npx tsc --noEmit # cek tipe
+```

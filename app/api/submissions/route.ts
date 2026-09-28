@@ -4,8 +4,8 @@ import {
   createSubmission,
   updateSubmissionViolations,
   deleteSubmission,
-  Submission,
 } from "@/lib/db";
+import type { Submission } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
@@ -30,9 +30,10 @@ export async function POST(request: Request) {
       lastActiveAt: now,
     };
 
-    createSubmission(newSubmission);
+    await createSubmission(newSubmission);
     return NextResponse.json({ success: true, submission: newSubmission });
-  } catch {
+  } catch (error) {
+    console.error("[api/submissions] gagal:", error);
     return NextResponse.json(
       { error: "Gagal mencatat peserta kuis." },
       { status: 500 }
@@ -52,7 +53,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    const updated = updateSubmissionViolations(submissionId, violationCount);
+    const updated = await updateSubmissionViolations(submissionId, violationCount);
     if (!updated) {
       return NextResponse.json(
         { error: "Sesi peserta tidak ditemukan." },
@@ -61,7 +62,8 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ success: true, submission: updated });
-  } catch {
+  } catch (error) {
+    console.error("[api/submissions] gagal:", error);
     return NextResponse.json(
       { error: "Gagal memperbarui data pelanggaran." },
       { status: 500 }
@@ -86,7 +88,7 @@ export async function DELETE(request: Request) {
       );
     }
 
-    const success = deleteSubmission(submissionId);
+    const success = await deleteSubmission(submissionId);
     if (!success) {
       return NextResponse.json(
         { error: "Data peserta tidak ditemukan." },
@@ -95,7 +97,8 @@ export async function DELETE(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error("[api/submissions] gagal:", error);
     return NextResponse.json(
       { error: "Gagal menghapus data peserta." },
       { status: 500 }

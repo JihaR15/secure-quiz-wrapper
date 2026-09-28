@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { findAdminByEmail, createAdmin, Admin } from "@/lib/db";
+import { findAdminByEmail, createAdmin } from "@/lib/db";
+import type { Admin } from "@/lib/types";
 import { hashPassword, createSessionToken } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -14,7 +15,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = findAdminByEmail(email);
+    const existing = await findAdminByEmail(email);
     if (existing) {
       return NextResponse.json(
         { error: "Email sudah terdaftar. Silakan login." },
@@ -31,7 +32,19 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    createAdmin(newAdmin);
+    try {
+      await createAdmin(newAdmin);
+    } catch (error) {
+      // 23505 is a unique violation, so a parallel registration won the race.
+      if ((error as { code?: string }).code === "23505") {
+        return NextResponse.json(
+          { error: "Email sudah terdaftar. Silakan login." },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
     const token = await createSessionToken(newAdmin.id);
 
     const response = NextResponse.json({
@@ -49,7 +62,8 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error("[api/auth/register] gagal:", error);
     return NextResponse.json(
       { error: "Gagal memproses pendaftaran admin." },
       { status: 500 }

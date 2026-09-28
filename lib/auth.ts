@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
-import { findAdminById, Admin } from "@/lib/db";
+import { findAdminById } from "@/lib/db";
+import type { Admin } from "@/lib/types";
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "secure-quiz-wrapper-secret-key-2026-production"
@@ -44,7 +45,7 @@ export async function getAuthenticatedAdmin(): Promise<Admin | null> {
     const payload = await verifySessionToken(token);
     if (!payload) return null;
 
-    const admin = findAdminById(payload.adminId);
+    const admin = await findAdminById(payload.adminId);
     return admin || null;
   } catch {
     return null;

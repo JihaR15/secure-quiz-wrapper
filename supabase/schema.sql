@@ -1,0 +1,42 @@
+-- Schema for the Secure Quiz Wrapper.
+--
+-- Run this in the Supabase SQL editor (or any Postgres client) before
+-- pointing DATABASE_URL at the project. It is safe to run more than once.
+--
+-- The app only ever talks to this database from the Next.js server using the
+-- connection string, never from the browser. Do not enable the anon/public
+-- API key for participants: a proctoring tool must not let examinees read or
+-- edit their own records.
+
+create table if not exists admins (
+  id            text primary key,
+  email         text not null unique,
+  password_hash text not null,
+  name          text not null,
+  created_at    timestamptz not null default now()
+);
+
+create table if not exists quizzes (
+  id          text primary key,
+  admin_id    text not null references admins (id) on delete cascade,
+  title       text not null,
+  form_url    text not null,
+  encoded_url text not null,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists quizzes_admin_id_created_at_idx
+  on quizzes (admin_id, created_at);
+
+create table if not exists submissions (
+  id               text primary key,
+  quiz_id          text not null references quizzes (id) on delete cascade,
+  participant_name text not null,
+  violation_count  integer not null default 0,
+  status           text not null default 'active' check (status in ('active', 'completed')),
+  started_at       timestamptz not null default now(),
+  last_active_at   timestamptz not null default now()
+);
+
+create index if not exists submissions_quiz_id_started_at_idx
+  on submissions (quiz_id, started_at);

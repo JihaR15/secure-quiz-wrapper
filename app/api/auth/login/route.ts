@@ -14,7 +14,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const admin = findAdminByEmail(email);
+    const admin = await findAdminByEmail(email);
     if (!admin) {
       return NextResponse.json(
         { error: "Email atau password tidak valid." },
@@ -47,7 +47,8 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error("[api/auth/login] gagal:", error);
     return NextResponse.json(
       { error: "Gagal memproses autentikasi admin." },
       { status: 500 }
