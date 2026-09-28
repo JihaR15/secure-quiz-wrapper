@@ -477,6 +477,28 @@ function QuizContent() {
             </button>
             <SecurityBadge violationCount={violationCount} />
           </div>
+
+          {/* Floating Bottom Finish Bar (Prominent Notice) */}
+          <div className="fixed bottom-4 inset-x-4 z-40 mx-auto max-w-lg animate-in slide-in-from-bottom-5 duration-300">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-neutral-900/95 p-3.5 shadow-2xl backdrop-blur-xl">
+              <div className="min-w-0 pl-1">
+                <p className="text-xs font-semibold text-neutral-100">
+                  {t.finishBarNotice}
+                </p>
+                <p className="truncate text-[11px] text-neutral-400">
+                  {t.finishBarSub}
+                </p>
+              </div>
+              <Button
+                onClick={handleOpenFinish}
+                className="shrink-0 gap-2 bg-emerald-600 font-semibold text-white hover:bg-emerald-500 shadow-md"
+                size="sm"
+              >
+                <CheckmarkCircle01Icon className="size-4" />
+                <span>{t.finishBarCta}</span>
+              </Button>
+            </div>
+          </div>
         </>
       )}
 
