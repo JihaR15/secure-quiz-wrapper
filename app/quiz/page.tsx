@@ -15,7 +15,6 @@ import {
   AlertCircleIcon,
   Globe02Icon,
   CheckmarkCircle01Icon,
-  Logout01Icon,
 } from "hugeicons-react";
 import { Language, translations } from "@/lib/i18n";
 import { ViolationBreakdown, ViolationType } from "@/lib/types";
@@ -43,6 +42,7 @@ function QuizContent() {
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const mainContainerRef = useRef<HTMLDivElement | null>(null);
   const lastViolationTimeRef = useRef<number>(0);
   const lastTabSwitchTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
@@ -91,6 +91,21 @@ function QuizContent() {
       // Storage unavailable or parsing error
     }
   }, [quizIdParam]);
+
+  // Auto-focus main window after gate closes to ensure Alt+Tab detection works immediately
+  useEffect(() => {
+    if (!isNameGateOpen && !isCompleted) {
+      const timer = setTimeout(() => {
+        try {
+          window.focus();
+          if (mainContainerRef.current) {
+            mainContainerRef.current.focus();
+          }
+        } catch {}
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isNameGateOpen, isCompleted]);
 
   // Handle participant name submission
   const handleNameSubmit = async (name: string) => {
@@ -251,6 +266,11 @@ function QuizContent() {
 
         // If visibilitychange already recorded a tab switch in the last 400ms, ignore window blur
         if (Date.now() - lastTabSwitchTimeRef.current < 400) {
+          return;
+        }
+
+        // If focus moved to the form iframe inside our wrapper, ignore (not a window switch)
+        if (document.activeElement === iframeRef.current) {
           return;
         }
 
@@ -439,8 +459,15 @@ function QuizContent() {
 
   return (
     <div
-      className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans"
+      ref={mainContainerRef}
+      tabIndex={-1}
+      className="relative w-screen h-screen max-w-[100vw] overflow-hidden bg-neutral-950 select-none font-sans outline-none"
       style={{ WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
+      onClick={() => {
+        try {
+          window.focus();
+        } catch {}
+      }}
     >
       {/* Name Registration & Rules Modal Gate */}
       <NameGateModal
@@ -451,21 +478,6 @@ function QuizContent() {
       {/* Floating Header Controls */}
       {!isNameGateOpen && (
         <>
-          {/* Button Keluar di sebelah Kiri */}
-          <div className="fixed top-4 left-4 z-30 flex items-center gap-2">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleOpenFinish}
-              className="shadow-xl font-semibold text-xs py-2 px-3"
-            >
-              <Logout01Icon className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {language === "id" ? "Selesai Ujian" : "Finish Exam"}
-              </span>
-            </Button>
-          </div>
-
           {/* Controls di sebelah Kanan */}
           <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
             <button
