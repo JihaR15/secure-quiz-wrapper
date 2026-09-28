@@ -53,7 +53,9 @@ function subscribeLanguage(onStoreChange: () => void) {
 function getLanguageSnapshot(): Language {
   const saved = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
   if (saved === "id" || saved === "en") return saved;
-  return window.navigator.language.toLowerCase().startsWith("id") ? "id" : "en";
+  // Indonesian by default. Sniffing navigator.language sent English visitors
+  // straight to the English copy, and this app is written for Indonesian users.
+  return "id";
 }
 
 function subscribeTheme(onStoreChange: () => void) {
