@@ -6,13 +6,21 @@ import { ArrowDown01Icon } from "hugeicons-react";
  * A real anchor to the features section. The hairline draws itself downward,
  * then the chevron drops — both CSS-only so they respect reduced motion.
  */
-export function ScrollCue({ href, label }: { href: string; label: string }) {
+export function ScrollCue({
+  href,
+  label,
+  className = "",
+}: {
+  href: string;
+  label: string;
+  className?: string;
+}) {
   return (
     <a
       href={href}
       aria-label={label}
       title={label}
-      className="group flex shrink-0 items-center gap-3 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className={`group flex shrink-0 items-center gap-3 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${className}`}
     >
       <span className="relative flex h-14 w-9 flex-col items-center justify-center gap-2">
         <span className="relative block h-8 w-px overflow-hidden bg-border">
