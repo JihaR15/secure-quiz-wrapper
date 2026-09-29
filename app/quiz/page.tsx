@@ -585,10 +585,10 @@ function QuizContent() {
         </>
       )}
 
-      {/* Floating Notice & Bouncing Pointer Modal */}
+      {/* Floating Notice & Pointer Modal */}
       {showFinishTutorial && !isNameGateOpen && !isCompleted && (
         <div className="fixed inset-0 z-40 flex flex-col justify-end items-center pb-24 sm:pb-28 px-4 bg-neutral-950/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="relative max-w-md w-full animate-bounce [animation-duration:2s] space-y-3">
+          <div className="relative max-w-md w-full space-y-3">
             <div className="rounded-2xl border border-emerald-500/40 bg-neutral-900/95 p-5 shadow-2xl backdrop-blur-xl text-center space-y-3.5">
               <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <InformationCircleIcon className="size-6" />
@@ -615,7 +615,7 @@ function QuizContent() {
               <span className="text-[11px] font-medium tracking-wide bg-neutral-900/95 border border-emerald-500/30 px-3 py-1 rounded-full text-emerald-300 shadow-lg">
                 {t.finishTutorialArrow}
               </span>
-              <ArrowDown01Icon className="size-6 animate-pulse stroke-[2.5]" />
+              <ArrowDown01Icon className="size-6 animate-bounce text-emerald-400 stroke-[2.5]" />
             </div>
           </div>
         </div>
