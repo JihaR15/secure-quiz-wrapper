@@ -16,28 +16,31 @@ export async function POST(request: Request) {
 
     const admin = await findAdminByEmail(email.trim());
 
-    // Security practice: Return success even if email is not found to prevent user enumeration,
-    // but only send the reset email if the user actually exists.
-    if (admin) {
-      const token = await createPasswordResetToken(admin.id, admin.email);
-
-      // Determine origin from request headers or host
-      const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
-      const proto = request.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
-      const origin = `${proto}://${host}`;
-
-      const resetUrl = `${origin}/admin/reset-password?token=${encodeURIComponent(token)}`;
-
-      await sendPasswordResetEmail({
-        to: admin.email,
-        name: admin.name,
-        resetUrl,
-      });
+    if (!admin) {
+      return NextResponse.json(
+        { error: "Email belum terdaftar dalam sistem." },
+        { status: 404 }
+      );
     }
+
+    const token = await createPasswordResetToken(admin.id, admin.email);
+
+    // Determine origin from request headers or host
+    const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "localhost:3000";
+    const proto = request.headers.get("x-forwarded-proto") || (host.startsWith("localhost") ? "http" : "https");
+    const origin = `${proto}://${host}`;
+
+    const resetUrl = `${origin}/admin/reset-password?token=${encodeURIComponent(token)}`;
+
+    await sendPasswordResetEmail({
+      to: admin.email,
+      name: admin.name,
+      resetUrl,
+    });
 
     return NextResponse.json({
       success: true,
-      message: "Jika email terdaftar, tautan verifikasi telah dikirimkan ke kotak masuk Anda.",
+      message: "Tautan verifikasi telah dikirimkan ke kotak masuk Anda.",
     });
   } catch (error) {
     console.error("Forgot password API error:", error);

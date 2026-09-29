@@ -40,7 +40,11 @@ export default function ForgotPasswordPage() {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error || t.toastNetworkError);
+        const errorMsg =
+          data.error === "Email belum terdaftar dalam sistem."
+            ? t.emailNotFound
+            : (data.error || t.toastNetworkError);
+        setError(errorMsg);
         setPending(false);
         return;
       }

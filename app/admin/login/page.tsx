@@ -110,6 +110,7 @@ export default function AdminLoginPage() {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            placeholder="••••••••"
             className={FIELD_CLASS}
           />
         </div>

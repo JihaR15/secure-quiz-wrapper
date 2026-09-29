@@ -118,6 +118,7 @@ export default function AdminRegisterPage() {
             minLength={8}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
+            placeholder="••••••••"
             className="h-10"
           />
         </div>
