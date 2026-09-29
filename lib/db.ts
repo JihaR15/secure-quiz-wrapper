@@ -26,6 +26,10 @@ interface Store {
   findAdminById(id: string): Promise<Admin | undefined>;
   createAdmin(admin: Admin): Promise<Admin>;
   updateAdminPassword(id: string, passwordHash: string): Promise<boolean>;
+  updateAdminProfile(
+    id: string,
+    updates: { name?: string; passwordHash?: string }
+  ): Promise<Admin | null>;
   getQuizzesByAdmin(adminId: string): Promise<Quiz[]>;
   getQuizById(quizId: string): Promise<Quiz | undefined>;
   createQuiz(quiz: Quiz): Promise<Quiz>;
@@ -122,6 +126,20 @@ const jsonStore: Store = {
     admin.passwordHash = passwordHash;
     writeJsonDb(db);
     return true;
+  },
+
+  async updateAdminProfile(id, updates) {
+    const db = readJsonDb();
+    const admin = db.admins.find((a) => a.id === id);
+    if (!admin) return null;
+    if (updates.name !== undefined && updates.name.trim()) {
+      admin.name = updates.name.trim();
+    }
+    if (updates.passwordHash !== undefined) {
+      admin.passwordHash = updates.passwordHash;
+    }
+    writeJsonDb(db);
+    return admin;
   },
 
   async getQuizzesByAdmin(adminId) {
@@ -333,6 +351,40 @@ function createPostgresStore(connectionString: string): Store {
       return rows.length > 0;
     },
 
+    async updateAdminProfile(id, updates) {
+      const name = updates.name?.trim();
+      const passwordHash = updates.passwordHash;
+
+      if (name !== undefined && passwordHash !== undefined) {
+        const rows = await sql<AdminRow[]>`
+          update admins
+          set name = ${name}, password_hash = ${passwordHash}
+          where id = ${id}
+          returning *
+        `;
+        return rows[0] ? toAdmin(rows[0]) : null;
+      } else if (name !== undefined) {
+        const rows = await sql<AdminRow[]>`
+          update admins
+          set name = ${name}
+          where id = ${id}
+          returning *
+        `;
+        return rows[0] ? toAdmin(rows[0]) : null;
+      } else if (passwordHash !== undefined) {
+        const rows = await sql<AdminRow[]>`
+          update admins
+          set password_hash = ${passwordHash}
+          where id = ${id}
+          returning *
+        `;
+        return rows[0] ? toAdmin(rows[0]) : null;
+      }
+
+      const rows = await sql<AdminRow[]>`select * from admins where id = ${id} limit 1`;
+      return rows[0] ? toAdmin(rows[0]) : null;
+    },
+
     async getQuizzesByAdmin(adminId) {
       const rows = await sql<QuizRow[]>`
         select * from quizzes where admin_id = ${adminId} order by created_at asc, id asc
@@ -500,6 +552,13 @@ export function createAdmin(admin: Admin): Promise<Admin> {
 
 export function updateAdminPassword(id: string, passwordHash: string): Promise<boolean> {
   return getStore().updateAdminPassword(id, passwordHash);
+}
+
+export function updateAdminProfile(
+  id: string,
+  updates: { name?: string; passwordHash?: string }
+): Promise<Admin | null> {
+  return getStore().updateAdminProfile(id, updates);
 }
 
 export function getQuizzesByAdmin(adminId: string): Promise<Quiz[]> {

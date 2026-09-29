@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { DotGrid } from "@/components/react-bits/dot-grid";
 import { CreateQuizForm } from "@/components/admin/create-quiz-form";
+import { EditProfileDialog } from "@/components/admin/edit-profile-dialog";
 import { QuizList } from "@/components/admin/quiz-list";
 import { QuizDetail } from "@/components/admin/quiz-detail";
 import { LanguageToggle } from "@/components/site/language-toggle";
@@ -79,6 +80,8 @@ export default function AdminDashboardPage() {
   const [selectedQuizId, setSelectedQuizId] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
   const [adminName, setAdminName] = React.useState("");
+  const [adminEmail, setAdminEmail] = React.useState("");
+  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
 
   const [titleInput, setTitleInput] = React.useState("");
   const [urlInput, setUrlInput] = React.useState("");
@@ -131,13 +134,23 @@ export default function AdminDashboardPage() {
     let cancelled = false;
 
     fetch("/api/auth/me")
-      .then((res) => res.json().then((body: { authenticated?: boolean; admin?: { name?: string } }) => ({ res, body })))
+      .then((res) =>
+        res
+          .json()
+          .then(
+            (body: {
+              authenticated?: boolean;
+              admin?: { name?: string; email?: string };
+            }) => ({ res, body })
+          )
+      )
       .then(({ res, body }) => {
         if (cancelled) return;
         if (!res.ok || !body.authenticated) {
           router.replace("/admin/login");
           return;
         }
+        if (body.admin?.email) setAdminEmail(body.admin.email);
         return loadQuizzes(body.admin?.name ?? "");
       })
       .catch(() => {
@@ -312,22 +325,30 @@ export default function AdminDashboardPage() {
             <Wordmark className="hidden sm:inline" />
           </Link>
 
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {adminFirstName ? (
-              <span className="mr-1 hidden items-center gap-2 border-r border-border pr-3 text-sm text-muted-foreground sm:flex">
-                <UserIcon className="size-4" />
-                <span className="max-w-[12ch] truncate">{adminFirstName}</span>
-              </span>
+              <button
+                type="button"
+                onClick={() => setIsProfileModalOpen(true)}
+                title={t.accountSettings}
+                aria-label={t.accountSettings}
+                className="group flex items-center gap-1.5 rounded-full border border-border/80 bg-card/60 px-2 py-1 text-xs font-medium text-foreground transition-all hover:bg-muted hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-3 sm:py-1.5 sm:text-sm"
+              >
+                <div className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                  <UserIcon className="size-3 sm:size-3.5" />
+                </div>
+                <span className="max-w-[8ch] truncate sm:max-w-[14ch]">{adminFirstName}</span>
+              </button>
             ) : null}
-            <LanguageToggle className="h-10 sm:h-8" />
-            <ThemeToggle className="size-10 sm:size-8" />
+            <LanguageToggle className="h-9 sm:h-8" />
+            <ThemeToggle className="size-9 sm:size-8" />
             <Button
               variant="ghost"
               size="icon"
               onClick={handleLogout}
               title={t.logout}
               aria-label={t.logout}
-              className="size-10 sm:size-8"
+              className="size-9 sm:size-8"
             >
               <Logout01Icon className="size-4" />
             </Button>
@@ -520,6 +541,15 @@ export default function AdminDashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <EditProfileDialog
+        open={isProfileModalOpen}
+        onOpenChange={setIsProfileModalOpen}
+        currentName={adminName}
+        currentEmail={adminEmail}
+        onSuccess={(updatedName) => {
+          setAdminName(updatedName);
+        }}
+      />
     </div>
   );
 }
