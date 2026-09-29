@@ -148,3 +148,115 @@ export async function sendPasswordResetEmail({
     return { success: false };
   }
 }
+
+export interface SendFeedbackEmailParams {
+  name?: string;
+  email?: string;
+  category?: string;
+  message: string;
+}
+
+export async function sendFeedbackEmail({
+  name,
+  email,
+  category = "Saran & Masukan",
+  message,
+}: SendFeedbackEmailParams): Promise<{ success: boolean; messageId?: string }> {
+  const mailer = getMailTransporter();
+  const to = process.env.FEEDBACK_RECIPIENT_EMAIL || process.env.SMTP_USER || "admin@securequiz.local";
+  const from = process.env.SMTP_FROM || '"Secure Quiz Wrapper" <noreply@securequiz.local>';
+
+  const senderName = name?.trim() || "Pengguna";
+  const senderEmail = email?.trim() || "Tidak dicantumkan";
+  const cleanCategory = category?.trim() || "Umum";
+
+  const subject = `[Feedback Secure Quiz] ${cleanCategory} - dari ${senderName}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="id">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-width: 100%; background-color: #f4f4f5; padding: 40px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" style="max-width: 560px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e4e4e7; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+                <tr>
+                  <td style="padding: 24px 32px; background-color: #09090b; color: #ffffff;">
+                    <div style="font-size: 18px; font-weight: 700; letter-spacing: -0.02em;">
+                      Secure Quiz Wrapper
+                    </div>
+                    <div style="font-size: 12px; color: #a1a1aa; margin-top: 4px;">
+                      Pesan Saran & Masukan Baru
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 32px;">
+                    <div style="margin-bottom: 24px; padding: 16px; background-color: #f4f4f5; border-radius: 8px;">
+                      <table style="width: 100%; font-size: 13px; line-height: 1.6;">
+                        <tr>
+                          <td style="width: 130px; color: #71717a; font-weight: 500;">Kategori:</td>
+                          <td style="color: #09090b; font-weight: 600;">${cleanCategory}</td>
+                        </tr>
+                        <tr>
+                          <td style="color: #71717a; font-weight: 500;">Pengirim:</td>
+                          <td style="color: #09090b;">${senderName}</td>
+                        </tr>
+                        <tr>
+                          <td style="color: #71717a; font-weight: 500;">Email Balasan:</td>
+                          <td style="color: #2563eb;">${senderEmail}</td>
+                        </tr>
+                        <tr>
+                          <td style="color: #71717a; font-weight: 500;">Waktu:</td>
+                          <td style="color: #71717a;">${new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })} WIB</td>
+                        </tr>
+                      </table>
+                    </div>
+
+                    <h2 style="margin: 0 0 12px; font-size: 15px; font-weight: 600; color: #09090b;">
+                      Isi Pesan:
+                    </h2>
+                    <div style="padding: 16px; background-color: #ffffff; border: 1px solid #e4e4e7; border-left: 4px solid #10b981; border-radius: 6px; font-size: 14px; line-height: 1.7; color: #27272a; white-space: pre-wrap;">${message.trim()}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 32px; background-color: #fafafa; border-top: 1px solid #f4f4f5; text-align: center; font-size: 12px; color: #a1a1aa;">
+                    Email dikirimkan secara otomatis oleh sistem Secure Quiz Wrapper.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const text = `Saran & Masukan Baru:\nKategori: ${cleanCategory}\nPengirim: ${senderName}\nEmail: ${senderEmail}\nWaktu: ${new Date().toISOString()}\n\nPesan:\n${message.trim()}\n`;
+
+  try {
+    const info = await mailer.sendMail({
+      from,
+      to,
+      replyTo: email?.trim() || undefined,
+      subject,
+      text,
+      html,
+    });
+
+    if (info.message) {
+      console.log("[SMTP development fallback] Feedback preview:\n", info.message.toString());
+    }
+
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("Failed to send feedback email:", error);
+    return { success: false };
+  }
+}
+

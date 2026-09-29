@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Add01Icon, Logout01Icon, UserIcon } from "hugeicons-react";
+import { Add01Icon, Comment01Icon, Logout01Icon, UserIcon } from "hugeicons-react";
 import { Logo, Wordmark } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,6 +29,7 @@ import {
 import { DotGrid } from "@/components/react-bits/dot-grid";
 import { CreateQuizForm } from "@/components/admin/create-quiz-form";
 import { EditProfileDialog } from "@/components/admin/edit-profile-dialog";
+import { FeedbackDialog } from "@/components/feedback/feedback-dialog";
 import { QuizList } from "@/components/admin/quiz-list";
 import { QuizDetail } from "@/components/admin/quiz-detail";
 import { LanguageToggle } from "@/components/site/language-toggle";
@@ -82,6 +83,7 @@ export default function AdminDashboardPage() {
   const [adminName, setAdminName] = React.useState("");
   const [adminEmail, setAdminEmail] = React.useState("");
   const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = React.useState(false);
 
   const [titleInput, setTitleInput] = React.useState("");
   const [urlInput, setUrlInput] = React.useState("");
@@ -492,6 +494,21 @@ export default function AdminDashboardPage() {
         )}
       </main>
 
+      <footer className="mt-auto border-t border-border/60 py-6">
+        <div className="mx-auto flex max-w-[1400px] flex-col items-center justify-between gap-3 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6">
+          <p>© {new Date().getFullYear()} Secure Quiz Wrapper · Controlled Assessment System</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFeedbackOpen(true)}
+            className="h-8 gap-2 rounded-full border-border bg-card/60 text-xs shadow-sm hover:bg-muted"
+          >
+            <Comment01Icon className="size-3.5 text-primary" />
+            <span>{t.feedbackButton}</span>
+          </Button>
+        </div>
+      </footer>
+
       <AlertDialog
         open={quizPendingDelete !== null}
         onOpenChange={(open) => !open && setQuizPendingDelete(null)}
@@ -549,6 +566,12 @@ export default function AdminDashboardPage() {
         onSuccess={(updatedName) => {
           setAdminName(updatedName);
         }}
+      />
+      <FeedbackDialog
+        open={isFeedbackOpen}
+        onOpenChange={setIsFeedbackOpen}
+        defaultName={adminName}
+        defaultEmail={adminEmail}
       />
     </div>
   );
