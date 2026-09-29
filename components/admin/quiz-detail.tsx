@@ -12,10 +12,10 @@ import {
   QrCode01Icon,
   Ticket01Icon,
 } from "hugeicons-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ParticipantTable } from "@/components/admin/participant-table";
 import { useLanguage, useTheme } from "@/components/providers";
 import { formatDate, getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
@@ -83,6 +83,7 @@ export function QuizDetail({
   const [resultDraft, setResultDraft] = React.useState(quiz.resultUrl ?? "");
   const [savingResult, setSavingResult] = React.useState(false);
   const [resultError, setResultError] = React.useState("");
+  const [activeTab, setActiveTab] = React.useState("access");
 
   const violations = quiz.submissions.reduce(
     (total, submission) => total + submission.violationCount,
@@ -212,179 +213,195 @@ export function QuizDetail({
         </dl>
       </div>
 
-      <div className="grid gap-6 border-t border-border pt-6 lg:grid-cols-12">
-        <div className="space-y-3 lg:col-span-8">
-          <Label htmlFor="quiz-access-link" className="text-xs text-muted-foreground">
-            {t.quizAccessLink}
-          </Label>
-          <p
-            id="quiz-access-link"
-            className="select-all break-all rounded-lg border border-border bg-muted/40 px-3.5 py-2.5 font-mono text-xs leading-relaxed"
-          >
-            {url}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              onClick={() => onCopy(quiz)}
-              variant="outline"
-              size="sm"
-              className="h-10 gap-2 sm:h-8"
-            >
-              {copied ? (
-                <CheckmarkCircle01Icon className="size-4 text-success" />
-              ) : (
-                <Copy01Icon className="size-4" />
-              )}
-              {copied ? t.linkCopied : t.copyQuizLink}
-            </Button>
-            <Button asChild variant="ghost" size="sm" className="h-10 gap-2 sm:h-8">
-              <a href={url} target="_blank" rel="noopener noreferrer">
-                {t.testQuizSession}
-                <ArrowUpRight01Icon className="size-4" />
-              </a>
-            </Button>
-          </div>
+      {/* Tab Switcher: Akses Kuis vs Hasil & Pelanggaran */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between">
+          <TabsList className="h-10 p-1 bg-muted/60">
+            <TabsTrigger value="access" className="gap-2 px-3.5 text-xs font-medium">
+              <QrCode01Icon className="size-3.5" />
+              <span>{t.tabAccess}</span>
+            </TabsTrigger>
+            <TabsTrigger value="results" className="gap-2 px-3.5 text-xs font-medium">
+              <span>{t.tabResults}</span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 font-mono text-[0.6875rem] font-semibold text-primary tabular-nums">
+                {quiz.submissions.length}
+              </span>
+            </TabsTrigger>
+          </TabsList>
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-5 lg:col-span-4">
-          <QRCodeSVG
-            value={url}
-            size={128}
-            level="H"
-            bgColor="transparent"
-            fgColor={theme === "dark" ? "#e8e8e4" : "#12120f"}
-          />
-          <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
-            {t.scanQrCode}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadQr}
-            className="h-9 w-full gap-2"
-          >
-            <QrCode01Icon className="size-4" />
-            {t.downloadQr}
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-4 border-t border-border pt-6">
-        {/* Results link. Read-only card until the teacher asks to edit, so the
-            common case stays a single obvious button. */}
-        <div className="rounded-lg border border-border bg-muted/30 p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
-              <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
-                {t.resultUrlLabel}
-              </p>
-              {editingResult ? null : quiz.resultUrl ? (
-                <a
-                  href={quiz.resultUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block max-w-full truncate text-sm font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-                >
-                  {describeResultHost(quiz.resultUrl)}
-                </a>
-              ) : (
-                <p className="text-sm text-muted-foreground">{t.resultUrlEmpty}</p>
-              )}
-            </div>
-            {editingResult ? null : quiz.resultUrl ? (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="h-9 gap-2"
-                title={t.openInNewTab}
-              >
-                <a href={quiz.resultUrl} target="_blank" rel="noopener noreferrer">
-                  <ArrowUpRight01Icon className="size-4" />
-                  {t.viewResults}
-                </a>
-              </Button>
-            ) : null}
-          </div>
-
-          {editingResult ? (
-            <div className="mt-3 space-y-2">
-              <Label htmlFor={`result-url-${quiz.id}`} className="sr-only">
-                {t.resultUrlLabel}
+        <TabsContent value="access" className="mt-4 space-y-6">
+          <div className="grid gap-6 border-t border-border pt-6 lg:grid-cols-12">
+            <div className="space-y-3 lg:col-span-8">
+              <Label htmlFor="quiz-access-link" className="text-xs text-muted-foreground">
+                {t.quizAccessLink}
               </Label>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id={`result-url-${quiz.id}`}
-                  type="url"
-                  inputMode="url"
-                  autoFocus
-                  spellCheck={false}
-                  value={resultDraft}
-                  onChange={(event) => {
-                    setResultDraft(event.target.value);
-                    if (resultError) setResultError("");
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void handleSaveResultUrl();
-                    }
-                  }}
-                  placeholder={t.resultUrlPlaceholder}
-                  aria-invalid={resultError ? true : undefined}
-                  className="h-10 flex-1 font-mono text-xs"
-                />
+              <p
+                id="quiz-access-link"
+                className="select-all break-all rounded-lg border border-border bg-muted/40 px-3.5 py-2.5 font-mono text-xs leading-relaxed"
+              >
+                {url}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
                   type="button"
-                  onClick={() => void handleSaveResultUrl()}
-                  disabled={savingResult}
-                  className="h-10 shrink-0 gap-2 sm:w-28"
+                  onClick={() => onCopy(quiz)}
+                  variant="outline"
+                  size="sm"
+                  className="h-10 gap-2 sm:h-8"
                 >
-                  <CheckmarkCircle01Icon className="size-4" />
-                  {t.save}
+                  {copied ? (
+                    <CheckmarkCircle01Icon className="size-4 text-success" />
+                  ) : (
+                    <Copy01Icon className="size-4" />
+                  )}
+                  {copied ? t.linkCopied : t.copyQuizLink}
                 </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditingResult(false);
-                    setResultDraft(quiz.resultUrl ?? "");
-                    setResultError("");
-                  }}
-                  className="h-10 shrink-0 sm:w-24"
-                >
-                  {t.cancel}
+                <Button asChild variant="ghost" size="sm" className="h-10 gap-2 sm:h-8">
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    {t.testQuizSession}
+                    <ArrowUpRight01Icon className="size-4" />
+                  </a>
                 </Button>
               </div>
-              {resultError ? (
-                <p role="alert" className="text-xs text-destructive">
-                  {resultError}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  {t.resultUrlHint}
-                </p>
-              )}
             </div>
-          ) : null}
-        </div>
 
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold tracking-[-0.01em]">
-            {t.participantResults}
-          </h3>
-          <Badge variant="outline" className="font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
-            {quiz.submissions.length} {t.participants.toLowerCase()}
-          </Badge>
-        </div>
-        <ParticipantTable
-          submissions={quiz.submissions}
-          locale={locale}
-          onRequestDelete={onRequestDeleteSubmission}
-        />
-      </div>
+            <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-5 lg:col-span-4">
+              <QRCodeSVG
+                value={url}
+                size={128}
+                level="H"
+                bgColor="transparent"
+                fgColor={theme === "dark" ? "#e8e8e4" : "#12120f"}
+              />
+              <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
+                {t.scanQrCode}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadQr}
+                className="h-9 w-full gap-2"
+              >
+                <QrCode01Icon className="size-4" />
+                {t.downloadQr}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4 border-t border-border pt-6">
+            {/* Results link. Read-only card until the teacher asks to edit, so the
+                common case stays a single obvious button. */}
+            <div className="rounded-lg border border-border bg-muted/30 p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
+                    {t.resultUrlLabel}
+                  </p>
+                  {editingResult ? null : quiz.resultUrl ? (
+                    <a
+                      href={quiz.resultUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block max-w-full truncate text-sm font-medium underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+                    >
+                      {describeResultHost(quiz.resultUrl)}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t.resultUrlEmpty}</p>
+                  )}
+                </div>
+                {editingResult ? null : quiz.resultUrl ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-9 gap-2"
+                    title={t.openInNewTab}
+                  >
+                    <a href={quiz.resultUrl} target="_blank" rel="noopener noreferrer">
+                      <ArrowUpRight01Icon className="size-4" />
+                      {t.viewResults}
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+
+              {editingResult ? (
+                <div className="mt-3 space-y-2">
+                  <Label htmlFor={`result-url-${quiz.id}`} className="sr-only">
+                    {t.resultUrlLabel}
+                  </Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      id={`result-url-${quiz.id}`}
+                      type="url"
+                      inputMode="url"
+                      autoFocus
+                      spellCheck={false}
+                      value={resultDraft}
+                      onChange={(event) => {
+                        setResultDraft(event.target.value);
+                        if (resultError) setResultError("");
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          void handleSaveResultUrl();
+                        }
+                      }}
+                      placeholder={t.resultUrlPlaceholder}
+                      aria-invalid={resultError ? true : undefined}
+                      className="h-10 flex-1 font-mono text-xs"
+                    />
+                    <Button
+                      type="button"
+                      onClick={() => void handleSaveResultUrl()}
+                      disabled={savingResult}
+                      className="h-10 shrink-0 gap-2 sm:w-28"
+                    >
+                      <CheckmarkCircle01Icon className="size-4" />
+                      {t.save}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingResult(false);
+                        setResultDraft(quiz.resultUrl ?? "");
+                        setResultError("");
+                      }}
+                      className="h-10 shrink-0 sm:w-24"
+                    >
+                      {t.cancel}
+                    </Button>
+                  </div>
+                  {resultError ? (
+                    <p role="alert" className="text-xs text-destructive">
+                      {resultError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {t.resultUrlHint}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="results" className="mt-4 space-y-4">
+          <div className="border-t border-border pt-6">
+            <ParticipantTable
+              submissions={quiz.submissions}
+              locale={locale}
+              onRequestDelete={onRequestDeleteSubmission}
+            />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

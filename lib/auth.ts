@@ -36,6 +36,31 @@ export async function verifySessionToken(token: string): Promise<{ adminId: stri
   }
 }
 
+export async function createPasswordResetToken(adminId: string, email: string): Promise<string> {
+  return new SignJWT({ adminId, email, type: "password_reset" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("1h")
+    .sign(JWT_SECRET);
+}
+
+export async function verifyPasswordResetToken(
+  token: string
+): Promise<{ adminId: string; email: string } | null> {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    if (payload.type !== "password_reset" || !payload.adminId || !payload.email) {
+      return null;
+    }
+    return {
+      adminId: payload.adminId as string,
+      email: payload.email as string,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getAuthenticatedAdmin(): Promise<Admin | null> {
   try {
     const cookieStore = await cookies();

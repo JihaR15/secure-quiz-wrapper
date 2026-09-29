@@ -25,6 +25,7 @@ interface Store {
   findAdminByEmail(email: string): Promise<Admin | undefined>;
   findAdminById(id: string): Promise<Admin | undefined>;
   createAdmin(admin: Admin): Promise<Admin>;
+  updateAdminPassword(id: string, passwordHash: string): Promise<boolean>;
   getQuizzesByAdmin(adminId: string): Promise<Quiz[]>;
   getQuizById(quizId: string): Promise<Quiz | undefined>;
   createQuiz(quiz: Quiz): Promise<Quiz>;
@@ -37,6 +38,10 @@ interface Store {
     submissionId: string,
     violationCount: number,
     violationBreakdown?: Submission["violationBreakdown"]
+  ): Promise<Submission | null>;
+  updateSubmissionStatus(
+    submissionId: string,
+    status: Submission["status"]
   ): Promise<Submission | null>;
   deleteSubmission(submissionId: string): Promise<boolean>;
 }
@@ -110,6 +115,15 @@ const jsonStore: Store = {
     return admin;
   },
 
+  async updateAdminPassword(id, passwordHash) {
+    const db = readJsonDb();
+    const admin = db.admins.find((a) => a.id === id);
+    if (!admin) return false;
+    admin.passwordHash = passwordHash;
+    writeJsonDb(db);
+    return true;
+  },
+
   async getQuizzesByAdmin(adminId) {
     const db = readJsonDb();
     return db.quizzes.filter((q) => q.adminId === adminId).map(withResultUrl);
@@ -152,6 +166,7 @@ const jsonStore: Store = {
     const db = readJsonDb();
     return db.submissions
       .filter((s) => s.quizId === quizId)
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
       .map((s) => ({ ...s, violationBreakdown: withBreakdown(s.violationBreakdown) }));
   },
 
@@ -161,6 +176,7 @@ const jsonStore: Store = {
     const wanted = new Set(quizIds);
     return db.submissions
       .filter((s) => wanted.has(s.quizId))
+      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
       .map((s) => ({ ...s, violationBreakdown: withBreakdown(s.violationBreakdown) }));
   },
 
@@ -177,6 +193,16 @@ const jsonStore: Store = {
     if (!sub) return null;
     sub.violationCount = violationCount;
     if (violationBreakdown) sub.violationBreakdown = violationBreakdown;
+    sub.lastActiveAt = new Date().toISOString();
+    writeJsonDb(db);
+    return { ...sub, violationBreakdown: withBreakdown(sub.violationBreakdown) };
+  },
+
+  async updateSubmissionStatus(submissionId, status) {
+    const db = readJsonDb();
+    const sub = db.submissions.find((s) => s.id === submissionId);
+    if (!sub) return null;
+    sub.status = status;
     sub.lastActiveAt = new Date().toISOString();
     writeJsonDb(db);
     return { ...sub, violationBreakdown: withBreakdown(sub.violationBreakdown) };
@@ -297,6 +323,16 @@ function createPostgresStore(connectionString: string): Store {
       return toAdmin(rows[0]);
     },
 
+    async updateAdminPassword(id, passwordHash) {
+      const rows = await sql<{ id: string }[]>`
+        update admins
+        set password_hash = ${passwordHash}
+        where id = ${id}
+        returning id
+      `;
+      return rows.length > 0;
+    },
+
     async getQuizzesByAdmin(adminId) {
       const rows = await sql<QuizRow[]>`
         select * from quizzes where admin_id = ${adminId} order by created_at asc, id asc
@@ -338,7 +374,7 @@ function createPostgresStore(connectionString: string): Store {
 
     async getSubmissionsByQuiz(quizId) {
       const rows = await sql<SubmissionRow[]>`
-        select * from submissions where quiz_id = ${quizId} order by started_at asc, id asc
+        select * from submissions where quiz_id = ${quizId} order by started_at desc, id desc
       `;
       return rows.map(toSubmission);
     },
@@ -348,7 +384,7 @@ function createPostgresStore(connectionString: string): Store {
       const rows = await sql<SubmissionRow[]>`
         select * from submissions
         where quiz_id in ${sql(quizIds)}
-        order by started_at asc, id asc
+        order by started_at desc, id desc
       `;
       return rows.map(toSubmission);
     },
@@ -377,6 +413,17 @@ function createPostgresStore(connectionString: string): Store {
               when ${violationBreakdown === undefined}::boolean then violation_breakdown
               else ${sql.json(violationBreakdown ?? EMPTY_BREAKDOWN)}
             end,
+            last_active_at = now()
+        where id = ${submissionId}
+        returning *
+      `;
+      return rows[0] ? toSubmission(rows[0]) : null;
+    },
+
+    async updateSubmissionStatus(submissionId, status) {
+      const rows = await sql<SubmissionRow[]>`
+        update submissions
+        set status = ${status},
             last_active_at = now()
         where id = ${submissionId}
         returning *
@@ -451,6 +498,10 @@ export function createAdmin(admin: Admin): Promise<Admin> {
   return getStore().createAdmin(admin);
 }
 
+export function updateAdminPassword(id: string, passwordHash: string): Promise<boolean> {
+  return getStore().updateAdminPassword(id, passwordHash);
+}
+
 export function getQuizzesByAdmin(adminId: string): Promise<Quiz[]> {
   return getStore().getQuizzesByAdmin(adminId);
 }
@@ -493,6 +544,13 @@ export function updateSubmissionViolations(
   violationBreakdown?: Submission["violationBreakdown"]
 ): Promise<Submission | null> {
   return getStore().updateSubmissionViolations(submissionId, violationCount, violationBreakdown);
+}
+
+export function updateSubmissionStatus(
+  submissionId: string,
+  status: Submission["status"]
+): Promise<Submission | null> {
+  return getStore().updateSubmissionStatus(submissionId, status);
 }
 
 export function deleteSubmission(submissionId: string): Promise<boolean> {

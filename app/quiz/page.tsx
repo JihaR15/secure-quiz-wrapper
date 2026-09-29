@@ -10,7 +10,6 @@ import { NameGateModal } from "@/components/quiz/name-gate-modal";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Shield01Icon,
   ArrowLeft01Icon,
   AlertCircleIcon,
   Globe02Icon,
@@ -25,7 +24,13 @@ function QuizContent() {
   const quizIdParam = searchParams.get("id");
 
   const { language, toggleLanguage, t } = useLanguage();
-  const [targetUrl, setTargetUrl] = useState<string>("");
+  const targetUrl = React.useMemo(() => {
+    if (rawFormParam) {
+      return decodeFormUrl(rawFormParam);
+    }
+    return "https://docs.google.com/forms/d/e/1FAIpQLScf3nF9U3sR_SampleAssessment/viewform?embedded=true";
+  }, [rawFormParam]);
+
   const [participantName, setParticipantName] = useState<string>("");
   const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [isNameGateOpen, setIsNameGateOpen] = useState<boolean>(true);
@@ -37,7 +42,6 @@ function QuizContent() {
     contextmenu: 0,
   });
   const [showToast, setShowToast] = useState<boolean>(false);
-  const [lastViolationType, setLastViolationType] = useState<ViolationType>("tab");
   const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
@@ -50,16 +54,6 @@ function QuizContent() {
   const lastFinishCancelTimeRef = useRef<number>(0);
   const isCompletedRef = useRef<boolean>(false);
 
-  useEffect(() => {
-    if (rawFormParam) {
-      const decoded = decodeFormUrl(rawFormParam);
-      setTargetUrl(decoded);
-    } else {
-      const defaultSample = "https://docs.google.com/forms/d/e/1FAIpQLScf3nF9U3sR_SampleAssessment/viewform?embedded=true";
-      setTargetUrl(defaultSample);
-    }
-  }, [rawFormParam]);
-
   // Session restoration on page refresh
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -70,13 +64,15 @@ function QuizContent() {
       if (saved) {
         const data = JSON.parse(saved);
         if (data && data.participantName && data.submissionId) {
-          setParticipantName(data.participantName);
-          setSubmissionId(data.submissionId);
-          setViolationCount(data.violationCount || 0);
-          if (data.violationBreakdown) {
-            setViolationBreakdown(data.violationBreakdown);
-          }
-          setIsNameGateOpen(false);
+          React.startTransition(() => {
+            setParticipantName(data.participantName);
+            setSubmissionId(data.submissionId);
+            setViolationCount(data.violationCount || 0);
+            if (data.violationBreakdown) {
+              setViolationBreakdown(data.violationBreakdown);
+            }
+            setIsNameGateOpen(false);
+          });
 
           // 3-second grace period after session restoration
           isGracePeriodRef.current = true;
@@ -166,6 +162,14 @@ function QuizContent() {
     showFinishConfirmRef.current = false;
     setShowFinishConfirm(false);
 
+    if (submissionId) {
+      fetch("/api/submissions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId, status: "completed" }),
+      }).catch(() => {});
+    }
+
     if (typeof document !== "undefined" && document.fullscreenElement) {
       document.exitFullscreen().catch(() => {});
     }
@@ -220,7 +224,6 @@ function QuizContent() {
       if (now - lastViolationTimeRef.current < 1200) return;
       lastViolationTimeRef.current = now;
 
-      setLastViolationType(type);
       setViolationCount((prevCount) => {
         const nextCount = prevCount + 1;
         setViolationBreakdown((prevBreakdown) => {

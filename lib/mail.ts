@@ -1,0 +1,150 @@
+import nodemailer, { type Transporter } from "nodemailer";
+
+interface SendPasswordResetEmailParams {
+  to: string;
+  name: string;
+  resetUrl: string;
+  language?: "id" | "en";
+}
+
+let transporter: Transporter | null = null;
+
+function getMailTransporter(): Transporter {
+  if (transporter) return transporter;
+
+  const host = process.env.SMTP_HOST;
+  const port = Number(process.env.SMTP_PORT ?? 587);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
+  const secure = process.env.SMTP_SECURE === "true" || port === 465;
+
+  if (host && user && pass) {
+    transporter = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+    });
+  } else {
+    // Development fallback transporter: writes to console or uses jsonTransport
+    transporter = nodemailer.createTransport({
+      streamTransport: true,
+      newline: "unix",
+      buffer: true,
+    });
+  }
+
+  return transporter;
+}
+
+export async function sendPasswordResetEmail({
+  to,
+  name,
+  resetUrl,
+  language = "id",
+}: SendPasswordResetEmailParams): Promise<{ success: boolean; messageId?: string; previewUrl?: string }> {
+  const mailer = getMailTransporter();
+  const from = process.env.SMTP_FROM || '"Secure Quiz Wrapper" <noreply@securequiz.local>';
+
+  const isId = language === "id";
+  const subject = isId
+    ? "Atur Ulang Kata Sandi - Secure Quiz Wrapper"
+    : "Reset Your Password - Secure Quiz Wrapper";
+
+  const greeting = isId ? `Halo, ${name}` : `Hello, ${name}`;
+  const intro = isId
+    ? "Kami menerima permintaan untuk mengatur ulang kata sandi akun admin Secure Quiz Wrapper Anda. Klik tombol di bawah ini untuk memasukkan kata sandi baru:"
+    : "We received a request to reset the password for your Secure Quiz Wrapper admin account. Click the button below to set a new password:";
+  const buttonText = isId ? "Atur Ulang Kata Sandi" : "Reset Password";
+  const validityNotice = isId
+    ? "Tautan ini hanya berlaku selama 1 jam. Jika Anda tidak merasa melakukan permintaan ini, abaikan email ini."
+    : "This link is valid for 1 hour only. If you did not request this, you can safely ignore this email.";
+  const fallbackNotice = isId
+    ? "Atau salin tautan berikut ke peramban Anda:"
+    : "Or copy this link to your browser:";
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="${language}">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${subject}</title>
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-width: 100%; background-color: #f4f4f5; padding: 40px 16px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" style="max-width: 540px; background-color: #ffffff; border-radius: 12px; border: 1px solid #e4e4e7; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
+                <tr>
+                  <td style="padding: 32px 32px 24px; border-bottom: 1px solid #f4f4f5;">
+                    <div style="font-size: 18px; font-weight: 700; color: #09090b; letter-spacing: -0.02em;">
+                      Secure Quiz Wrapper
+                    </div>
+                    <div style="font-size: 12px; color: #71717a; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px;">
+                      ${isId ? "Konsol Pengawas" : "Admin Console"}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 32px;">
+                    <h1 style="margin: 0 0 16px; font-size: 20px; font-weight: 600; color: #09090b; line-height: 1.3;">
+                      ${greeting}
+                    </h1>
+                    <p style="margin: 0 0 24px; font-size: 14px; line-height: 1.6; color: #3f3f46;">
+                      ${intro}
+                    </p>
+                    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 28px;">
+                      <tr>
+                        <td align="center" style="border-radius: 8px; background-color: #09090b;">
+                          <a href="${resetUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; border-radius: 8px;">
+                            ${buttonText}
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="margin: 0 0 12px; font-size: 13px; line-height: 1.5; color: #71717a;">
+                      ${validityNotice}
+                    </p>
+                    <p style="margin: 0 0 6px; font-size: 12px; color: #a1a1aa;">
+                      ${fallbackNotice}
+                    </p>
+                    <p style="margin: 0; font-size: 12px; word-break: break-all; color: #2563eb;">
+                      <a href="${resetUrl}" style="color: #2563eb; text-decoration: underline;">${resetUrl}</a>
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 20px 32px; background-color: #fafafa; border-top: 1px solid #f4f4f5; text-align: center; font-size: 12px; color: #a1a1aa;">
+                    &copy; ${new Date().getFullYear()} Secure Quiz Wrapper · Controlled Assessment Environment
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+    </html>
+  `;
+
+  const text = `${greeting}\n\n${intro}\n\n${buttonText}: ${resetUrl}\n\n${validityNotice}\n`;
+
+  try {
+    const info = await mailer.sendMail({
+      from,
+      to,
+      subject,
+      text,
+      html,
+    });
+
+    if (info.message) {
+      console.log("[SMTP development fallback] Email message preview:\n", info.message.toString());
+    }
+
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error("Failed to send password reset email:", error);
+    return { success: false };
+  }
+}

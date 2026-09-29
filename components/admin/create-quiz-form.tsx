@@ -54,50 +54,37 @@ export function CreateQuizForm({
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-12">
-        <div className="space-y-2 sm:col-span-6 lg:col-span-4">
-          <Label htmlFor={titleId} className="text-xs text-muted-foreground">
-            {t.quizTitle}
-          </Label>
-          <Input
-            id={titleId}
-            name="title"
-            value={title}
-            onChange={(event) => onTitleChange(event.target.value)}
-            placeholder={t.quizTitlePlaceholder}
-            autoComplete="off"
-            className="h-10"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor={titleId} className="text-xs text-muted-foreground">
+          {t.quizTitle}
+        </Label>
+        <Input
+          id={titleId}
+          name="title"
+          value={title}
+          onChange={(event) => onTitleChange(event.target.value)}
+          placeholder={t.quizTitlePlaceholder}
+          autoComplete="off"
+          className="h-10"
+        />
+      </div>
 
-        <div className="space-y-2 sm:col-span-6 lg:col-span-6">
-          <Label htmlFor={urlId} className="text-xs text-muted-foreground">
-            {t.targetUrl}
-          </Label>
-          <Input
-            id={urlId}
-            name="formUrl"
-            type="url"
-            inputMode="url"
-            value={url}
-            onChange={(event) => onUrlChange(event.target.value)}
-            placeholder={t.formUrlPlaceholder}
-            autoComplete="off"
-            spellCheck={false}
-            className="h-10 font-mono text-xs"
-          />
-        </div>
-
-        <div className="flex items-end sm:col-span-12 lg:col-span-2">
-          <Button
-            type="submit"
-            disabled={submitting}
-            className="h-10 w-full gap-2 lg:whitespace-nowrap"
-          >
-            {submitting ? t.creating : t.generateQuiz}
-            {submitting ? null : <ArrowRight01Icon className="size-4" />}
-          </Button>
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor={urlId} className="text-xs text-muted-foreground">
+          {t.targetUrl}
+        </Label>
+        <Input
+          id={urlId}
+          name="formUrl"
+          type="url"
+          inputMode="url"
+          value={url}
+          onChange={(event) => onUrlChange(event.target.value)}
+          placeholder={t.formUrlPlaceholder}
+          autoComplete="off"
+          spellCheck={false}
+          className="h-10 font-mono text-xs"
+        />
       </div>
 
       <div className="space-y-2">
@@ -146,6 +133,17 @@ export function CreateQuizForm({
           {error}
         </p>
       ) : null}
+
+      <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/60">
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="h-10 w-full sm:w-auto min-w-[140px] gap-2"
+        >
+          {submitting ? t.creating : t.generateQuiz}
+          {submitting ? null : <ArrowRight01Icon className="size-4" />}
+        </Button>
+      </div>
     </form>
   );
 }

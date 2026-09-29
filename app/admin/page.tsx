@@ -19,6 +19,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DotGrid } from "@/components/react-bits/dot-grid";
 import { CreateQuizForm } from "@/components/admin/create-quiz-form";
 import { QuizList } from "@/components/admin/quiz-list";
@@ -79,6 +86,7 @@ export default function AdminDashboardPage() {
   const [resultUrlError, setResultUrlError] = React.useState("");
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
 
   const [mobilePane, setMobilePane] = React.useState("quizzes");
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
@@ -200,6 +208,7 @@ export default function AdminDashboardPage() {
       setTitleInput("");
       setUrlInput("");
       setResultUrlInput("");
+      setIsCreateModalOpen(false);
       toast.success(t.toastCreated);
       await loadQuizzes();
     } catch {
@@ -331,46 +340,62 @@ export default function AdminDashboardPage() {
           <DashboardSkeleton />
         ) : (
           <div className="space-y-10">
-            {/* Page title */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <span aria-hidden className="h-px w-8 bg-primary" />
-                <span className="font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground">
-                  {t.adminConsole}
-                </span>
-              </div>
-              <h1 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-medium leading-[1.05] tracking-[-0.03em] text-balance">
-                {t.dashboardTitle}
-              </h1>
-              <p className="max-w-[62ch] text-pretty text-sm leading-relaxed text-muted-foreground">
-                {t.dashboardSub}
-              </p>
-            </div>
-
-            {/* Create quiz */}
-            <section className="space-y-4 rounded-xl border border-border bg-card p-5 sm:p-6">
-              <div className="flex items-center gap-2.5">
-                <Add01Icon className="size-4 text-muted-foreground" />
-                <h2 className="text-sm font-semibold tracking-[-0.01em]">
-                  {t.createQuizTitle}
-                </h2>
-                <p className="ml-auto hidden text-xs text-muted-foreground lg:block">
-                  {t.createQuizSub}
+            {/* Page title & Actions */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span aria-hidden className="h-px w-8 bg-primary" />
+                  <span className="font-mono text-[0.6875rem] uppercase tracking-[0.2em] text-muted-foreground">
+                    {t.adminConsole}
+                  </span>
+                </div>
+                <h1 className="font-display text-[clamp(1.75rem,4vw,2.75rem)] font-medium leading-[1.05] tracking-[-0.03em] text-balance">
+                  {t.dashboardTitle}
+                </h1>
+                <p className="max-w-[62ch] text-pretty text-sm leading-relaxed text-muted-foreground">
+                  {t.dashboardSub}
                 </p>
               </div>
-              <CreateQuizForm
-                title={titleInput}
-                url={urlInput}
-                resultUrl={resultUrlInput}
-                resultUrlError={resultUrlError}
-                error={error}
-                submitting={submitting}
-                onTitleChange={setTitleInput}
-                onUrlChange={setUrlInput}
-                onResultUrlChange={setResultUrlInput}
-                onSubmit={handleCreateQuiz}
-              />
-            </section>
+
+              <div className="shrink-0 sm:self-center">
+                <Button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="h-10 w-full sm:w-auto gap-2 px-4 shadow-sm"
+                >
+                  <Add01Icon className="size-4" />
+                  <span>{t.newQuizModalButton}</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Create quiz dialog modal */}
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Add01Icon className="size-4 text-primary" />
+                    <span>{t.createQuizTitle}</span>
+                  </DialogTitle>
+                  <DialogDescription>
+                    {t.newQuizModalDesc}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="pt-2">
+                  <CreateQuizForm
+                    title={titleInput}
+                    url={urlInput}
+                    resultUrl={resultUrlInput}
+                    resultUrlError={resultUrlError}
+                    error={error}
+                    submitting={submitting}
+                    onTitleChange={setTitleInput}
+                    onUrlChange={setUrlInput}
+                    onResultUrlChange={setResultUrlInput}
+                    onSubmit={handleCreateQuiz}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Quizzes + detail. Below lg the two panes become tabs; at lg both
                 are shown side by side, so the inactive panel is only hidden

@@ -3,6 +3,7 @@ import { getAuthenticatedAdmin } from "@/lib/auth";
 import {
   createSubmission,
   updateSubmissionViolations,
+  updateSubmissionStatus,
   deleteSubmission,
 } from "@/lib/db";
 import type { Submission } from "@/lib/types";
@@ -45,11 +46,37 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { submissionId, violationCount, violationBreakdown } = body;
+    const { submissionId, violationCount, violationBreakdown, status } = body;
 
-    if (!submissionId || typeof violationCount !== "number") {
+    if (!submissionId) {
       return NextResponse.json(
-        { error: "Submission ID dan violationCount valid wajib diisi." },
+        { error: "Submission ID wajib diisi." },
+        { status: 400 }
+      );
+    }
+
+    if (status) {
+      if (status !== "active" && status !== "completed") {
+        return NextResponse.json(
+          { error: "Status harus bernilai 'active' atau 'completed'." },
+          { status: 400 }
+        );
+      }
+      const updatedStatus = await updateSubmissionStatus(submissionId, status);
+      if (!updatedStatus) {
+        return NextResponse.json(
+          { error: "Sesi peserta tidak ditemukan." },
+          { status: 404 }
+        );
+      }
+      if (typeof violationCount !== "number") {
+        return NextResponse.json({ success: true, submission: updatedStatus });
+      }
+    }
+
+    if (typeof violationCount !== "number") {
+      return NextResponse.json(
+        { error: "violationCount atau status valid wajib diisi." },
         { status: 400 }
       );
     }
