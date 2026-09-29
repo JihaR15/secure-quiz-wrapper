@@ -221,6 +221,11 @@ const id = {
   finishBarNotice: "Sudah selesai mengisi formulir di atas?",
   finishBarSub: "Klik tombol untuk menutup dan mengunci sesi ujian",
   finishBarCta: "Selesai Ujian",
+  finishTutorialTitle: "Petunjuk Selesai Ujian",
+  finishTutorialBody:
+    "Setelah Anda selesai mengerjakan dan mengirimkan formulir di atas, jangan lupa untuk menekan tombol 'Selesai Ujian' di bawah ini untuk mengakhiri sesi.",
+  finishTutorialAction: "OK, Saya Paham & Mulai",
+  finishTutorialArrow: "Tombol selesai ujian berada di bawah ini ↓",
   finishConfirmTitle: "Akhiri sesi ujian?",
   finishConfirmBody: "Pastikan jawaban formulir sudah terkirim sebelum keluar dari sesi ini.",
   finishConfirmYes: "Ya, akhiri",
@@ -450,6 +455,11 @@ const en: Record<keyof typeof id, string> = {
   finishBarNotice: "Finished submitting the form above?",
   finishBarSub: "Click button to close and lock your exam session",
   finishBarCta: "Finish Exam",
+  finishTutorialTitle: "Completion Guide",
+  finishTutorialBody:
+    "Once you have finished answering and submitted the form above, make sure to click the 'Finish Exam' button below to conclude your session.",
+  finishTutorialAction: "OK, I Understand & Begin",
+  finishTutorialArrow: "Finish button is located below ↓",
   finishConfirmTitle: "End the exam session?",
   finishConfirmBody: "Make sure your form answers are submitted before leaving this session.",
   finishConfirmYes: "Yes, finish",

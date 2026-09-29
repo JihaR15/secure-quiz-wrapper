@@ -14,6 +14,8 @@ import {
   AlertCircleIcon,
   Globe02Icon,
   CheckmarkCircle01Icon,
+  ArrowDown01Icon,
+  InformationCircleIcon,
 } from "hugeicons-react";
 import { useLanguage } from "@/components/providers";
 import { ViolationBreakdown, ViolationType } from "@/lib/types";
@@ -43,6 +45,7 @@ function QuizContent() {
   });
   const [showToast, setShowToast] = useState<boolean>(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
+  const [showFinishTutorial, setShowFinishTutorial] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -51,7 +54,9 @@ function QuizContent() {
   const lastTabSwitchTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
   const showFinishConfirmRef = useRef<boolean>(false);
+  const showFinishTutorialRef = useRef<boolean>(false);
   const lastFinishCancelTimeRef = useRef<number>(0);
+  const lastTutorialCloseTimeRef = useRef<number>(0);
   const isCompletedRef = useRef<boolean>(false);
 
   // Session restoration on page refresh
@@ -72,6 +77,10 @@ function QuizContent() {
               setViolationBreakdown(data.violationBreakdown);
             }
             setIsNameGateOpen(false);
+            if (!data.tutorialDismissed) {
+              setShowFinishTutorial(true);
+              showFinishTutorialRef.current = true;
+            }
           });
 
           // 3-second grace period after session restoration
@@ -105,6 +114,8 @@ function QuizContent() {
   const handleNameSubmit = async (name: string) => {
     setParticipantName(name);
     setIsNameGateOpen(false);
+    setShowFinishTutorial(true);
+    showFinishTutorialRef.current = true;
 
     // Initial grace period (3 seconds) to settle focus after starting
     isGracePeriodRef.current = true;
@@ -133,6 +144,7 @@ function QuizContent() {
           quizId: quizIdParam || "default_quiz",
           violationCount: 0,
           violationBreakdown: { tab: 0, window: 0, clipboard: 0, contextmenu: 0 },
+          tutorialDismissed: false,
         };
         try {
           sessionStorage.setItem(storageKey, JSON.stringify(sessionPayload));
@@ -142,6 +154,38 @@ function QuizContent() {
     } catch {
       // Fallback
     }
+  };
+
+  // Dismiss floating finish tutorial notice
+  const handleDismissTutorial = () => {
+    setShowFinishTutorial(false);
+    showFinishTutorialRef.current = false;
+    lastTutorialCloseTimeRef.current = Date.now();
+    isGracePeriodRef.current = true;
+
+    const storageKey = `quiz_session_${quizIdParam || "default"}`;
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        parsed.tutorialDismissed = true;
+        sessionStorage.setItem(storageKey, JSON.stringify(parsed));
+        localStorage.setItem(storageKey, JSON.stringify(parsed));
+      }
+    } catch {}
+
+    setTimeout(() => {
+      isGracePeriodRef.current = false;
+    }, 2500);
+
+    setTimeout(() => {
+      try {
+        window.focus();
+        if (mainContainerRef.current) {
+          mainContainerRef.current.focus();
+        }
+      } catch {}
+    }, 60);
   };
 
   // Finish exam handlers
@@ -217,8 +261,14 @@ function QuizContent() {
 
   const triggerViolation = React.useCallback(
     (type: ViolationType) => {
-      if (isGracePeriodRef.current || showFinishConfirmRef.current || isCompletedRef.current) return;
+      if (
+        isGracePeriodRef.current ||
+        showFinishConfirmRef.current ||
+        showFinishTutorialRef.current ||
+        isCompletedRef.current
+      ) return;
       if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
+      if (Date.now() - lastTutorialCloseTimeRef.current < 2500) return;
 
       const now = Date.now();
       if (now - lastViolationTimeRef.current < 1200) return;
@@ -262,8 +312,14 @@ function QuizContent() {
     // 3. Alt+Tab / Window focus loss handler (Pindah Window)
     const handleWindowBlur = () => {
       setTimeout(() => {
-        if (isGracePeriodRef.current || showFinishConfirmRef.current || isCompletedRef.current) return;
+        if (
+          isGracePeriodRef.current ||
+          showFinishConfirmRef.current ||
+          showFinishTutorialRef.current ||
+          isCompletedRef.current
+        ) return;
         if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
+        if (Date.now() - lastTutorialCloseTimeRef.current < 2500) return;
 
         // If visibilitychange already recorded a tab switch in the last 400ms, ignore window blur
         if (Date.now() - lastTabSwitchTimeRef.current < 400) {
@@ -283,12 +339,14 @@ function QuizContent() {
 
     // 4. Context menu (Right-click & mobile long-press menu)
     const handleContextMenu = (e: Event) => {
+      if (showFinishTutorialRef.current) return;
       e.preventDefault();
       triggerViolation("contextmenu");
     };
 
     // 5. Mouse right-click interceptor (button === 2)
     const handleMouseDownUp = (e: MouseEvent) => {
+      if (showFinishTutorialRef.current) return;
       if (e.button === 2) {
         e.preventDefault();
         triggerViolation("contextmenu");
@@ -297,6 +355,7 @@ function QuizContent() {
 
     // 6. Copy, cut, paste interceptor
     const handleCopyCutPaste = (e: Event) => {
+      if (showFinishTutorialRef.current) return;
       e.preventDefault();
       triggerViolation("clipboard");
     };
@@ -307,6 +366,7 @@ function QuizContent() {
     let startY = 0;
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (showFinishTutorialRef.current) return;
       if (e.touches.length > 1) {
         triggerViolation("contextmenu");
         return;
@@ -492,8 +552,18 @@ function QuizContent() {
           </div>
 
           {/* Floating Bottom Finish Bar (Prominent Notice) */}
-          <div className="fixed bottom-4 inset-x-4 z-40 mx-auto max-w-lg animate-in slide-in-from-bottom-5 duration-300">
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-neutral-900/95 p-3.5 shadow-2xl backdrop-blur-xl">
+          <div
+            className={`fixed bottom-4 inset-x-4 mx-auto max-w-lg animate-in slide-in-from-bottom-5 duration-300 transition-all ${
+              showFinishTutorial ? "z-50" : "z-40"
+            }`}
+          >
+            <div
+              className={`flex items-center justify-between gap-3 rounded-2xl border bg-neutral-900/95 p-3.5 shadow-2xl backdrop-blur-xl transition-all duration-300 ${
+                showFinishTutorial
+                  ? "border-emerald-400 ring-4 ring-emerald-500/50 shadow-[0_0_40px_rgba(16,185,129,0.45)]"
+                  : "border-emerald-500/30"
+              }`}
+            >
               <div className="min-w-0 pl-1">
                 <p className="text-xs font-semibold text-neutral-100">
                   {t.finishBarNotice}
@@ -513,6 +583,42 @@ function QuizContent() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Floating Notice & Bouncing Pointer Modal */}
+      {showFinishTutorial && !isNameGateOpen && !isCompleted && (
+        <div className="fixed inset-0 z-40 flex flex-col justify-end items-center pb-24 sm:pb-28 px-4 bg-neutral-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="relative max-w-md w-full animate-bounce [animation-duration:2s] space-y-3">
+            <div className="rounded-2xl border border-emerald-500/40 bg-neutral-900/95 p-5 shadow-2xl backdrop-blur-xl text-center space-y-3.5">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <InformationCircleIcon className="size-6" />
+              </div>
+              <div className="space-y-1.5">
+                <h4 className="text-base font-semibold text-white">
+                  {t.finishTutorialTitle}
+                </h4>
+                <p className="text-xs text-neutral-300 leading-relaxed">
+                  {t.finishTutorialBody}
+                </p>
+              </div>
+              <Button
+                onClick={handleDismissTutorial}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-950/50"
+                size="default"
+              >
+                {t.finishTutorialAction}
+              </Button>
+            </div>
+
+            {/* Downward indicator arrow pointing directly to the finish button */}
+            <div className="flex flex-col items-center justify-center text-emerald-400 space-y-1">
+              <span className="text-[11px] font-medium tracking-wide bg-neutral-900/95 border border-emerald-500/30 px-3 py-1 rounded-full text-emerald-300 shadow-lg">
+                {t.finishTutorialArrow}
+              </span>
+              <ArrowDown01Icon className="size-6 animate-pulse stroke-[2.5]" />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Finish Confirmation Modal */}
@@ -568,7 +674,9 @@ function QuizContent() {
         <iframe
           ref={iframeRef}
           src={targetUrl}
-          className="w-full h-full border-0 bg-white"
+          className={`w-full h-full border-0 bg-white transition-all duration-300 ${
+            showFinishTutorial ? "blur-[5px] pointer-events-none select-none opacity-80" : ""
+          }`}
           title="Secure Assessment Session"
           sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
         />
