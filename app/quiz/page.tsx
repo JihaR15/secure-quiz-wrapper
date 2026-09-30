@@ -21,6 +21,64 @@ import {
 import { useLanguage } from "@/components/providers";
 import { ViolationBreakdown, ViolationType } from "@/lib/types";
 
+interface FailedViolationItem {
+  submissionId: string;
+  type: ViolationType;
+  timestamp: number;
+}
+
+const FAILED_VIOLATIONS_QUEUE_KEY = "failed_violations_queue";
+
+function getFailedViolationsQueue(): FailedViolationItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(FAILED_VIOLATIONS_QUEUE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function addToFailedViolationsQueue(item: FailedViolationItem) {
+  if (typeof window === "undefined") return;
+  try {
+    const queue = getFailedViolationsQueue();
+    queue.push(item);
+    localStorage.setItem(FAILED_VIOLATIONS_QUEUE_KEY, JSON.stringify(queue));
+  } catch {}
+}
+
+async function flushFailedViolationsQueue() {
+  if (typeof window === "undefined") return;
+  const queue = getFailedViolationsQueue();
+  if (queue.length === 0) return;
+
+  const remaining: FailedViolationItem[] = [];
+
+  for (const item of queue) {
+    try {
+      const res = await fetch("/api/submissions", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: item.submissionId,
+          type: item.type,
+        }),
+      });
+
+      if (!res.ok) {
+        remaining.push(item);
+      }
+    } catch {
+      remaining.push(item);
+    }
+  }
+
+  try {
+    localStorage.setItem(FAILED_VIOLATIONS_QUEUE_KEY, JSON.stringify(remaining));
+  } catch {}
+}
+
 function QuizContent() {
   const searchParams = useSearchParams();
   const rawFormParam = searchParams.get("form");
@@ -111,6 +169,39 @@ function QuizContent() {
       return () => clearTimeout(timer);
     }
   }, [isNameGateOpen, isCompleted]);
+
+  // Prevent accidental tab closure or reload while assessment is active
+  useEffect(() => {
+    if (isCompleted) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (isCompletedRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [isCompleted]);
+
+  // Offline recovery: flush failed violations queue when internet connection restores
+  useEffect(() => {
+    const handleOnline = () => {
+      flushFailedViolationsQueue();
+    };
+
+    if (typeof navigator !== "undefined" && navigator.onLine) {
+      flushFailedViolationsQueue();
+    }
+
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
+  }, []);
 
   // Handle participant name submission
   const handleNameSubmit = async (name: string) => {
@@ -282,7 +373,23 @@ function QuizContent() {
             submissionId,
             type,
           }),
-        }).catch(() => {});
+        })
+          .then((res) => {
+            if (!res.ok) {
+              addToFailedViolationsQueue({
+                submissionId,
+                type,
+                timestamp: Date.now(),
+              });
+            }
+          })
+          .catch(() => {
+            addToFailedViolationsQueue({
+              submissionId,
+              type,
+              timestamp: Date.now(),
+            });
+          });
       }
     },
     [submissionId, participantName, quizIdParam],
