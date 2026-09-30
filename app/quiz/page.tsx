@@ -16,6 +16,7 @@ import {
   CheckmarkCircle01Icon,
   ArrowDown01Icon,
   InformationCircleIcon,
+  ArrowExpand01Icon,
 } from "hugeicons-react";
 import { useLanguage } from "@/components/providers";
 import { ViolationBreakdown, ViolationType } from "@/lib/types";
@@ -47,6 +48,7 @@ function QuizContent() {
   const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
   const [showFinishTutorial, setShowFinishTutorial] = useState<boolean>(false);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [isFullscreenLost, setIsFullscreenLost] = useState<boolean>(false);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const mainContainerRef = useRef<HTMLDivElement | null>(null);
@@ -225,8 +227,36 @@ function QuizContent() {
     } catch {}
   };
 
+  const handleReenterFullscreen = async () => {
+    try {
+      const docEl = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void>;
+      };
+      if (docEl.requestFullscreen) {
+        await docEl.requestFullscreen();
+      } else if (docEl.webkitRequestFullscreen) {
+        await docEl.webkitRequestFullscreen();
+      }
+      setIsFullscreenLost(false);
+      isGracePeriodRef.current = true;
+      setTimeout(() => {
+        isGracePeriodRef.current = false;
+      }, 2000);
+      setTimeout(() => {
+        try {
+          window.focus();
+          if (mainContainerRef.current) {
+            mainContainerRef.current.focus();
+          }
+        } catch {}
+      }, 100);
+    } catch (err) {
+      console.error("Gagal kembali ke layar penuh:", err);
+    }
+  };
+
   const syncViolation = React.useCallback(
-    (count: number, breakdown: ViolationBreakdown) => {
+    (type: ViolationType, updatedCount: number, updatedBreakdown: ViolationBreakdown) => {
       if (isCompletedRef.current) return;
 
       const storageKey = `quiz_session_${quizIdParam || "default"}`;
@@ -236,8 +266,8 @@ function QuizContent() {
             submissionId,
             participantName,
             quizId: quizIdParam || "default_quiz",
-            violationCount: count,
-            violationBreakdown: breakdown,
+            violationCount: updatedCount,
+            violationBreakdown: updatedBreakdown,
           };
           sessionStorage.setItem(storageKey, JSON.stringify(payload));
           localStorage.setItem(storageKey, JSON.stringify(payload));
@@ -250,8 +280,7 @@ function QuizContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             submissionId,
-            violationCount: count,
-            violationBreakdown: breakdown,
+            type,
           }),
         }).catch(() => {});
       }
@@ -281,7 +310,7 @@ function QuizContent() {
             ...prevBreakdown,
             [type]: (prevBreakdown[type] || 0) + 1,
           };
-          syncViolation(nextCount, nextBreakdown);
+          syncViolation(type, nextCount, nextBreakdown);
           return nextBreakdown;
         });
         return nextCount;
@@ -413,9 +442,52 @@ function QuizContent() {
       }
     };
 
+    // 9. Fullscreen enforcement listener
+    const handleFullscreenChange = () => {
+      if (isNameGateOpen || isCompletedRef.current) return;
+      const isFs = Boolean(
+        document.fullscreenElement ||
+        (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement
+      );
+
+      if (!isFs) {
+        setIsFullscreenLost(true);
+        triggerViolation("window");
+      } else {
+        setIsFullscreenLost(false);
+        isGracePeriodRef.current = true;
+        setTimeout(() => {
+          isGracePeriodRef.current = false;
+        }, 2000);
+        setTimeout(() => {
+          try {
+            window.focus();
+            if (mainContainerRef.current) {
+              mainContainerRef.current.focus();
+            }
+          } catch {}
+        }, 100);
+      }
+    };
+
+    // Check fullscreen state after slight delay to allow initial requestFullscreen transition
+    const initialFsTimer = setTimeout(() => {
+      if (isNameGateOpen || isCompletedRef.current) return;
+      const isFs = Boolean(
+        document.fullscreenElement ||
+        (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement
+      );
+      if (!isFs) {
+        setIsFullscreenLost(true);
+        triggerViolation("window");
+      }
+    }, 500);
+
     document.addEventListener("visibilitychange", handleVisibilityChange, true);
     window.addEventListener("pagehide", handlePageHide, true);
     window.addEventListener("blur", handleWindowBlur, true);
+    document.addEventListener("fullscreenchange", handleFullscreenChange, true);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange, true);
     window.addEventListener("contextmenu", handleContextMenu, true);
     document.addEventListener("contextmenu", handleContextMenu, true);
     window.addEventListener("mousedown", handleMouseDownUp, true);
@@ -433,9 +505,12 @@ function QuizContent() {
     window.addEventListener("touchcancel", handleTouchEndCancel, true);
 
     return () => {
+      clearTimeout(initialFsTimer);
       document.removeEventListener("visibilitychange", handleVisibilityChange, true);
       window.removeEventListener("pagehide", handlePageHide, true);
       window.removeEventListener("blur", handleWindowBlur, true);
+      document.removeEventListener("fullscreenchange", handleFullscreenChange, true);
+      document.removeEventListener("webkitfullscreenchange", handleFullscreenChange, true);
       window.removeEventListener("contextmenu", handleContextMenu, true);
       document.removeEventListener("contextmenu", handleContextMenu, true);
       window.removeEventListener("mousedown", handleMouseDownUp, true);
@@ -662,6 +737,33 @@ function QuizContent() {
         </div>
       )}
 
+      {/* Mandatory Fullscreen Blocker Overlay */}
+      {isFullscreenLost && !isNameGateOpen && !isCompleted && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 bg-neutral-950 text-center animate-in fade-in duration-200">
+          <div className="max-w-md w-full space-y-6">
+            <div className="mx-auto w-16 h-16 rounded-3xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400">
+              <AlertCircleIcon className="w-8 h-8 stroke-[2]" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="font-serif text-2xl font-semibold text-white tracking-tight">
+                {t.fullscreenLostTitle}
+              </h2>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                {t.fullscreenLostDesc}
+              </p>
+            </div>
+            <Button
+              onClick={handleReenterFullscreen}
+              size="lg"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xl shadow-emerald-950/50"
+            >
+              <ArrowExpand01Icon className="w-5 h-5 mr-2" />
+              {t.returnFullscreen}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Non-intrusive Violation Toast Notification */}
       <ViolationToast
         show={showToast}
@@ -676,9 +778,9 @@ function QuizContent() {
           src={targetUrl}
           className={`w-full h-full border-0 bg-white transition-all duration-300 ${
             showFinishTutorial ? "blur-[5px] pointer-events-none select-none opacity-80" : ""
-          }`}
+          } ${isFullscreenLost ? "invisible pointer-events-none" : ""}`}
           title="Secure Assessment Session"
-          sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
+          sandbox="allow-forms allow-scripts allow-same-origin"
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center p-6 bg-neutral-950">

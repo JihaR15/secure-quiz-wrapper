@@ -6,7 +6,7 @@ import {
   updateSubmissionStatus,
   deleteSubmission,
 } from "@/lib/db";
-import type { Submission } from "@/lib/types";
+import type { Submission, ViolationType } from "@/lib/types";
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { submissionId, violationCount, violationBreakdown, status } = body;
+    const { submissionId, type, status } = body;
 
     if (!submissionId) {
       return NextResponse.json(
@@ -69,44 +69,20 @@ export async function PATCH(request: Request) {
           { status: 404 }
         );
       }
-      if (typeof violationCount !== "number") {
+      if (!type) {
         return NextResponse.json({ success: true, submission: updatedStatus });
       }
     }
 
-    if (typeof violationCount !== "number") {
+    const validTypes: ViolationType[] = ["tab", "window", "clipboard", "contextmenu"];
+    if (!type || !validTypes.includes(type)) {
       return NextResponse.json(
-        { error: "violationCount atau status valid wajib diisi." },
+        { error: "Tipe pelanggaran tidak valid. Harus salah satu dari: 'tab', 'window', 'clipboard', 'contextmenu'." },
         { status: 400 }
       );
     }
 
-    let breakdown: Submission["violationBreakdown"] | undefined;
-    if (violationBreakdown != null) {
-      const raw = violationBreakdown as Record<string, number>;
-      const values: (number | undefined)[] = [
-        raw.tab,
-        raw.window,
-        raw.clipboard,
-        raw.contextmenu,
-      ];
-      if (
-        values.some((value) => typeof value !== "number" || !Number.isFinite(value) || value < 0)
-      ) {
-        return NextResponse.json(
-          { error: "violationBreakdown harus berisi angka non-negatif untuk tab, window, clipboard, dan contextmenu." },
-          { status: 400 }
-        );
-      }
-      breakdown = {
-        tab: raw.tab as number,
-        window: raw.window as number,
-        clipboard: raw.clipboard as number,
-        contextmenu: raw.contextmenu as number,
-      };
-    }
-
-    const updated = await updateSubmissionViolations(submissionId, violationCount, breakdown);
+    const updated = await updateSubmissionViolations(submissionId, type);
     if (!updated) {
       return NextResponse.json(
         { error: "Sesi peserta tidak ditemukan." },

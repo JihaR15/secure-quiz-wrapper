@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
 import postgres from "postgres";
-import type { Admin, DatabaseSchema, Quiz, Submission } from "@/lib/types";
+import type { Admin, DatabaseSchema, Quiz, Submission, ViolationType } from "@/lib/types";
 
-export type { Admin, Quiz, Submission } from "@/lib/types";
+export type { Admin, Quiz, Submission, ViolationType } from "@/lib/types";
 
 /**
  * Storage layer.
@@ -40,8 +40,7 @@ interface Store {
   createSubmission(submission: Submission): Promise<Submission>;
   updateSubmissionViolations(
     submissionId: string,
-    violationCount: number,
-    violationBreakdown?: Submission["violationBreakdown"]
+    violationType: ViolationType
   ): Promise<Submission | null>;
   updateSubmissionStatus(
     submissionId: string,
@@ -205,15 +204,16 @@ const jsonStore: Store = {
     return { ...submission, violationBreakdown: withBreakdown(submission.violationBreakdown) };
   },
 
-  async updateSubmissionViolations(submissionId, violationCount, violationBreakdown) {
+  async updateSubmissionViolations(submissionId, violationType) {
     const db = readJsonDb();
     const sub = db.submissions.find((s) => s.id === submissionId);
     if (!sub) return null;
-    sub.violationCount = violationCount;
-    if (violationBreakdown) sub.violationBreakdown = violationBreakdown;
+    sub.violationCount = (sub.violationCount || 0) + 1;
+    sub.violationBreakdown = withBreakdown(sub.violationBreakdown);
+    sub.violationBreakdown[violationType] = (sub.violationBreakdown[violationType] || 0) + 1;
     sub.lastActiveAt = new Date().toISOString();
     writeJsonDb(db);
-    return { ...sub, violationBreakdown: withBreakdown(sub.violationBreakdown) };
+    return { ...sub, violationBreakdown: { ...sub.violationBreakdown } };
   },
 
   async updateSubmissionStatus(submissionId, status) {
@@ -454,17 +454,18 @@ function createPostgresStore(connectionString: string): Store {
       return toSubmission(rows[0]);
     },
 
-    async updateSubmissionViolations(submissionId, violationCount, violationBreakdown) {
-      // Single statement, so concurrent proctoring events cannot clobber
-      // each other the way a read-modify-write on a file could. The breakdown
-      // column is only touched when the caller sends one.
+    async updateSubmissionViolations(submissionId, violationType) {
+      // Atomic increment on violation_count and jsonb_set for violation_breakdown.
+      // This eliminates read-modify-write race conditions and ensures high-concurrency safety.
       const rows = await sql<SubmissionRow[]>`
         update submissions
-        set violation_count = ${violationCount},
-            violation_breakdown = case
-              when ${violationBreakdown === undefined}::boolean then violation_breakdown
-              else ${sql.json(violationBreakdown ?? EMPTY_BREAKDOWN)}
-            end,
+        set violation_count = violation_count + 1,
+            violation_breakdown = jsonb_set(
+              coalesce(violation_breakdown, '{"tab":0,"window":0,"clipboard":0,"contextmenu":0}'::jsonb),
+              array[${violationType}]::text[],
+              to_jsonb(coalesce((violation_breakdown->>${violationType})::int, 0) + 1),
+              true
+            ),
             last_active_at = now()
         where id = ${submissionId}
         returning *
@@ -599,10 +600,9 @@ export function createSubmission(submission: Submission): Promise<Submission> {
 
 export function updateSubmissionViolations(
   submissionId: string,
-  violationCount: number,
-  violationBreakdown?: Submission["violationBreakdown"]
+  violationType: ViolationType
 ): Promise<Submission | null> {
-  return getStore().updateSubmissionViolations(submissionId, violationCount, violationBreakdown);
+  return getStore().updateSubmissionViolations(submissionId, violationType);
 }
 
 export function updateSubmissionStatus(

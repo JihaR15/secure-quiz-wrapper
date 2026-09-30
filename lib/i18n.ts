@@ -255,6 +255,9 @@ const id = {
   feedbackSuccess: "Terima kasih! Saran & masukan Anda berhasil dikirimkan.",
   feedbackError: "Gagal mengirimkan masukan. Silakan coba lagi.",
   feedbackMinLength: "Pesan saran atau masukan minimal 5 karakter.",
+  fullscreenLostTitle: "Layar Penuh Terhenti",
+  fullscreenLostDesc: "Anda keluar dari mode layar penuh. Sesi ujian wajib dikerjakan dalam mode layar penuh. Pelanggaran telah dicatat.",
+  returnFullscreen: "Kembali ke Layar Penuh",
 } as const;
 
 const en: Record<keyof typeof id, string> = {
@@ -507,6 +510,9 @@ const en: Record<keyof typeof id, string> = {
   feedbackSuccess: "Thank you! Your feedback has been sent successfully.",
   feedbackError: "Failed to send feedback. Please try again.",
   feedbackMinLength: "Feedback message must be at least 5 characters.",
+  fullscreenLostTitle: "Fullscreen Exited",
+  fullscreenLostDesc: "You exited fullscreen mode. The assessment must be taken in fullscreen. The violation has been recorded.",
+  returnFullscreen: "Return to Fullscreen",
 };
 
 export type Translation = Record<keyof typeof id, string>;
