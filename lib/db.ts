@@ -34,6 +34,7 @@ interface Store {
   getQuizById(quizId: string): Promise<Quiz | undefined>;
   createQuiz(quiz: Quiz): Promise<Quiz>;
   updateQuizResultUrl(quizId: string, adminId: string, resultUrl: string | null): Promise<Quiz | null>;
+  updateQuizStealthMode(quizId: string, adminId: string, isStealthMode: boolean): Promise<Quiz | null>;
   deleteQuiz(quizId: string, adminId: string): Promise<boolean>;
   getSubmissionsByQuiz(quizId: string): Promise<Submission[]>;
   getSubmissionsByQuizIds(quizIds: string[]): Promise<Submission[]>;
@@ -56,8 +57,6 @@ interface Store {
 const EMPTY_BREAKDOWN: Submission["violationBreakdown"] = {
   tab: 0,
   window: 0,
-  clipboard: 0,
-  contextmenu: 0,
 };
 
 /** Submissions written before breakdowns existed read as all zeros. */
@@ -143,18 +142,22 @@ const jsonStore: Store = {
 
   async getQuizzesByAdmin(adminId) {
     const db = readJsonDb();
-    return db.quizzes.filter((q) => q.adminId === adminId).map(withResultUrl);
+    return db.quizzes.filter((q) => q.adminId === adminId).map(withQuizDefaults);
   },
 
   async getQuizById(quizId) {
     const db = readJsonDb();
     const quiz = db.quizzes.find((q) => q.id === quizId);
-    return quiz ? withResultUrl(quiz) : undefined;
+    return quiz ? withQuizDefaults(quiz) : undefined;
   },
 
   async createQuiz(quiz) {
     const db = readJsonDb();
-    const stored: Quiz = { ...quiz, resultUrl: quiz.resultUrl ?? null };
+    const stored: Quiz = {
+      ...quiz,
+      resultUrl: quiz.resultUrl ?? null,
+      isStealthMode: quiz.isStealthMode ?? false,
+    };
     db.quizzes.push(stored);
     writeJsonDb(db);
     return stored;
@@ -166,7 +169,16 @@ const jsonStore: Store = {
     if (!quiz) return null;
     quiz.resultUrl = resultUrl;
     writeJsonDb(db);
-    return withResultUrl(quiz);
+    return withQuizDefaults(quiz);
+  },
+
+  async updateQuizStealthMode(quizId, adminId, isStealthMode) {
+    const db = readJsonDb();
+    const quiz = db.quizzes.find((q) => q.id === quizId && q.adminId === adminId);
+    if (!quiz) return null;
+    quiz.isStealthMode = isStealthMode;
+    writeJsonDb(db);
+    return withQuizDefaults(quiz);
   },
 
   async deleteQuiz(quizId, adminId) {
@@ -255,6 +267,7 @@ interface QuizRow {
   form_url: string;
   encoded_url: string;
   result_url: string | null;
+  is_stealth_mode?: boolean | null;
   created_at: Date | string;
 }
 
@@ -287,13 +300,15 @@ const toQuiz = (row: QuizRow): Quiz => ({
   formUrl: row.form_url,
   encodedUrl: row.encoded_url,
   resultUrl: row.result_url ?? null,
+  isStealthMode: row.is_stealth_mode ?? false,
   createdAt: iso(row.created_at),
 });
 
-/** Quizzes written before resultUrl existed simply have none. */
-const withResultUrl = (quiz: Quiz): Quiz => ({
+/** Quizzes written before resultUrl or isStealthMode existed receive defaults. */
+const withQuizDefaults = (quiz: Quiz): Quiz => ({
   ...quiz,
   resultUrl: quiz.resultUrl ?? null,
+  isStealthMode: quiz.isStealthMode ?? false,
 });
 
 const toSubmission = (row: SubmissionRow): Submission => ({
@@ -399,8 +414,12 @@ function createPostgresStore(connectionString: string): Store {
 
     async createQuiz(quiz) {
       const rows = await sql<QuizRow[]>`
-        insert into quizzes (id, admin_id, title, form_url, encoded_url, result_url, created_at)
-        values (${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl}, ${quiz.encodedUrl}, ${quiz.resultUrl ?? null}, ${quiz.createdAt})
+        insert into quizzes (id, admin_id, title, form_url, encoded_url, result_url, is_stealth_mode, created_at)
+        values (
+          ${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl},
+          ${quiz.encodedUrl}, ${quiz.resultUrl ?? null}, ${quiz.isStealthMode ?? false},
+          ${quiz.createdAt}
+        )
         returning *
       `;
       return toQuiz(rows[0]);
@@ -410,6 +429,16 @@ function createPostgresStore(connectionString: string): Store {
       const rows = await sql<QuizRow[]>`
         update quizzes
         set result_url = ${resultUrl}
+        where id = ${quizId} and admin_id = ${adminId}
+        returning *
+      `;
+      return rows[0] ? toQuiz(rows[0]) : null;
+    },
+
+    async updateQuizStealthMode(quizId, adminId, isStealthMode) {
+      const rows = await sql<QuizRow[]>`
+        update quizzes
+        set is_stealth_mode = ${isStealthMode}
         where id = ${quizId} and admin_id = ${adminId}
         returning *
       `;
@@ -461,7 +490,7 @@ function createPostgresStore(connectionString: string): Store {
         update submissions
         set violation_count = violation_count + 1,
             violation_breakdown = jsonb_set(
-              coalesce(violation_breakdown, '{"tab":0,"window":0,"clipboard":0,"contextmenu":0}'::jsonb),
+              coalesce(violation_breakdown, '{"tab":0,"window":0}'::jsonb),
               array[${violationType}]::text[],
               to_jsonb(coalesce((violation_breakdown->>${violationType})::int, 0) + 1),
               true
@@ -580,6 +609,14 @@ export function updateQuizResultUrl(
   resultUrl: string | null
 ): Promise<Quiz | null> {
   return getStore().updateQuizResultUrl(quizId, adminId, resultUrl);
+}
+
+export function updateQuizStealthMode(
+  quizId: string,
+  adminId: string,
+  isStealthMode: boolean
+): Promise<Quiz | null> {
+  return getStore().updateQuizStealthMode(quizId, adminId, isStealthMode);
 }
 
 export function deleteQuiz(quizId: string, adminId: string): Promise<boolean> {

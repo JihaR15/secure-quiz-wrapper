@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       quizId,
       participantName: participantName.trim(),
       violationCount: 0,
-      violationBreakdown: { tab: 0, window: 0, clipboard: 0, contextmenu: 0 },
+      violationBreakdown: { tab: 0, window: 0 },
       status: "active",
       startedAt: now,
       lastActiveAt: now,
@@ -74,10 +74,10 @@ export async function PATCH(request: Request) {
       }
     }
 
-    const validTypes: ViolationType[] = ["tab", "window", "clipboard", "contextmenu"];
+    const validTypes: ViolationType[] = ["tab", "window"];
     if (!type || !validTypes.includes(type)) {
       return NextResponse.json(
-        { error: "Tipe pelanggaran tidak valid. Harus salah satu dari: 'tab', 'window', 'clipboard', 'contextmenu'." },
+        { error: "Tipe pelanggaran tidak valid. Harus salah satu dari: 'tab', 'window'." },
         { status: 400 }
       );
     }

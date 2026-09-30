@@ -14,11 +14,13 @@ type CreateQuizFormProps = {
   url: string;
   resultUrl: string;
   resultUrlError: string;
+  isStealthMode?: boolean;
   error: string;
   submitting: boolean;
   onTitleChange: (value: string) => void;
   onUrlChange: (value: string) => void;
   onResultUrlChange: (value: string) => void;
+  onStealthModeChange?: (value: boolean) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   idPrefix?: string;
 };
@@ -28,11 +30,13 @@ export function CreateQuizForm({
   url,
   resultUrl,
   resultUrlError,
+  isStealthMode = false,
   error,
   submitting,
   onTitleChange,
   onUrlChange,
   onResultUrlChange,
+  onStealthModeChange,
   onSubmit,
   idPrefix = "create",
 }: CreateQuizFormProps) {
@@ -126,6 +130,28 @@ export function CreateQuizForm({
             {t.resultUrlHint}
           </p>
         )}
+      </div>
+
+      {/* Stealth Mode (Mode Sembunyi) Toggle - Default ON */}
+      <div className="rounded-xl border border-border/70 bg-muted/30 p-3.5 space-y-2">
+        <div className="flex items-center justify-between">
+          <Label
+            htmlFor={`${idPrefix}-stealth-mode`}
+            className="text-xs font-semibold cursor-pointer select-none text-foreground flex items-center gap-2"
+          >
+            <span>{t.stealthModeLabel}</span>
+          </Label>
+          <input
+            id={`${idPrefix}-stealth-mode`}
+            type="checkbox"
+            checked={isStealthMode}
+            onChange={(e) => onStealthModeChange?.(e.target.checked)}
+            className="size-4.5 rounded border-border text-primary focus:ring-primary cursor-pointer accent-emerald-600"
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
+          {t.stealthModeHint}
+        </p>
       </div>
 
       {error ? (

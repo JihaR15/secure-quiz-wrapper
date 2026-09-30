@@ -89,6 +89,7 @@ export default function AdminDashboardPage() {
   const [urlInput, setUrlInput] = React.useState("");
   const [resultUrlInput, setResultUrlInput] = React.useState("");
   const [resultUrlError, setResultUrlError] = React.useState("");
+  const [isStealthModeInput, setIsStealthModeInput] = React.useState(false);
   const [error, setError] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
@@ -211,6 +212,7 @@ export default function AdminDashboardPage() {
           title: titleInput.trim(),
           formUrl: urlInput.trim(),
           resultUrl: resultLink,
+          isStealthMode: isStealthModeInput,
         }),
       });
       const data = await res.json();
@@ -223,6 +225,7 @@ export default function AdminDashboardPage() {
       setTitleInput("");
       setUrlInput("");
       setResultUrlInput("");
+      setIsStealthModeInput(false);
       setIsCreateModalOpen(false);
       toast.success(t.toastCreated);
       await loadQuizzes();
@@ -245,6 +248,24 @@ export default function AdminDashboardPage() {
       });
       if (!res.ok) return false;
       await loadQuizzes();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleUpdateStealthMode = async (
+    quizId: string,
+    isStealthMode: boolean
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/quizzes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId, isStealthMode }),
+      });
+      if (!res.ok) return false;
+      await loadQuizzes(undefined, true);
       return true;
     } catch {
       return false;
@@ -409,11 +430,13 @@ export default function AdminDashboardPage() {
                     url={urlInput}
                     resultUrl={resultUrlInput}
                     resultUrlError={resultUrlError}
+                    isStealthMode={isStealthModeInput}
                     error={error}
                     submitting={submitting}
                     onTitleChange={setTitleInput}
                     onUrlChange={setUrlInput}
                     onResultUrlChange={setResultUrlInput}
+                    onStealthModeChange={setIsStealthModeInput}
                     onSubmit={handleCreateQuiz}
                   />
                 </div>
@@ -479,6 +502,7 @@ export default function AdminDashboardPage() {
                     onCopy={handleCopyLink}
                     onRequestDeleteSubmission={setSubmissionPendingDelete}
                     onUpdateResultUrl={handleUpdateResultUrl}
+                    onUpdateStealthMode={handleUpdateStealthMode}
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">

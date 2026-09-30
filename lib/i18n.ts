@@ -258,6 +258,13 @@ const id = {
   fullscreenLostTitle: "Layar Penuh Terhenti",
   fullscreenLostDesc: "Anda keluar dari mode layar penuh. Sesi ujian wajib dikerjakan dalam mode layar penuh. Pelanggaran telah dicatat.",
   returnFullscreen: "Kembali ke Layar Penuh",
+  stealthModeLabel: "Mode Sembunyi (Stealth Mode)",
+  stealthModeHint: "Sembunyikan peringatan pelanggaran dari layar peserta. Pelanggaran tetap dicatat di dashboard admin.",
+  stealthModeBadge: "Mode Sembunyi Aktif",
+  stealthModeToggleDesc: "Sembunyikan peringatan dan badge pelanggaran dari layar peserta ujian.",
+  stealthModeToggleActive: "Mode Sembunyi Aktif (Peringatan & badge disembunyikan dari peserta)",
+  stealthModeToggleInactive: "Mode Normal (Peserta melihat badge & peringatan pelanggaran)",
+  stealthModeUpdated: "Pengaturan Mode Sembunyi berhasil diperbarui.",
 } as const;
 
 const en: Record<keyof typeof id, string> = {
@@ -513,6 +520,13 @@ const en: Record<keyof typeof id, string> = {
   fullscreenLostTitle: "Fullscreen Exited",
   fullscreenLostDesc: "You exited fullscreen mode. The assessment must be taken in fullscreen. The violation has been recorded.",
   returnFullscreen: "Return to Fullscreen",
+  stealthModeLabel: "Stealth Mode",
+  stealthModeHint: "Hide violation warnings from the participant screen. Violations are still recorded in the admin dashboard.",
+  stealthModeBadge: "Stealth Mode Active",
+  stealthModeToggleDesc: "Hide violation warnings and badge from the participant's screen.",
+  stealthModeToggleActive: "Stealth Mode Active (Warnings & badge hidden from participant)",
+  stealthModeToggleInactive: "Normal Mode (Participants can see their badge & violation warnings)",
+  stealthModeUpdated: "Stealth Mode setting updated successfully.",
 };
 
 export type Translation = Record<keyof typeof id, string>;

@@ -99,9 +99,8 @@ function QuizContent() {
   const [violationBreakdown, setViolationBreakdown] = useState<ViolationBreakdown>({
     tab: 0,
     window: 0,
-    clipboard: 0,
-    contextmenu: 0,
   });
+  const [isStealthMode, setIsStealthMode] = useState<boolean>(false);
   const [showToast, setShowToast] = useState<boolean>(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
   const [showFinishTutorial, setShowFinishTutorial] = useState<boolean>(false);
@@ -110,6 +109,9 @@ function QuizContent() {
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const mainContainerRef = useRef<HTMLDivElement | null>(null);
+  const violationCountRef = useRef<number>(0);
+  const violationBreakdownRef = useRef<ViolationBreakdown>({ tab: 0, window: 0 });
+  const isFullscreenLostRef = useRef<boolean>(false);
   const lastViolationTimeRef = useRef<number>(0);
   const lastTabSwitchTimeRef = useRef<number>(0);
   const isGracePeriodRef = useRef<boolean>(true);
@@ -132,10 +134,12 @@ function QuizContent() {
           React.startTransition(() => {
             setParticipantName(data.participantName);
             setSubmissionId(data.submissionId);
-            setViolationCount(data.violationCount || 0);
-            if (data.violationBreakdown) {
-              setViolationBreakdown(data.violationBreakdown);
-            }
+            const count = data.violationCount || 0;
+            const breakdown = data.violationBreakdown || { tab: 0, window: 0 };
+            setViolationCount(count);
+            violationCountRef.current = count;
+            setViolationBreakdown(breakdown);
+            violationBreakdownRef.current = breakdown;
             setIsNameGateOpen(false);
             if (!data.tutorialDismissed) {
               setShowFinishTutorial(true);
@@ -153,6 +157,19 @@ function QuizContent() {
     } catch {
       // Storage unavailable or parsing error
     }
+  }, [quizIdParam]);
+
+  // Fetch public quiz configuration (stealth mode)
+  useEffect(() => {
+    if (!quizIdParam) return;
+    fetch(`/api/quizzes/public?id=${encodeURIComponent(quizIdParam)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.isStealthMode === "boolean") {
+          setIsStealthMode(data.isStealthMode);
+        }
+      })
+      .catch(() => {});
   }, [quizIdParam]);
 
   // Auto-focus main window after gate closes to ensure Alt+Tab detection works immediately
@@ -230,13 +247,15 @@ function QuizContent() {
         const subId = data.submission.id;
         setSubmissionId(subId);
 
+        violationCountRef.current = 0;
+        violationBreakdownRef.current = { tab: 0, window: 0 };
         const storageKey = `quiz_session_${quizIdParam || "default"}`;
         const sessionPayload = {
           submissionId: subId,
           participantName: name,
           quizId: quizIdParam || "default_quiz",
           violationCount: 0,
-          violationBreakdown: { tab: 0, window: 0, clipboard: 0, contextmenu: 0 },
+          violationBreakdown: { tab: 0, window: 0 },
           tutorialDismissed: false,
         };
         try {
@@ -328,6 +347,7 @@ function QuizContent() {
       } else if (docEl.webkitRequestFullscreen) {
         await docEl.webkitRequestFullscreen();
       }
+      isFullscreenLostRef.current = false;
       setIsFullscreenLost(false);
       isGracePeriodRef.current = true;
       setTimeout(() => {
@@ -410,25 +430,28 @@ function QuizContent() {
       if (now - lastViolationTimeRef.current < 1200) return;
       lastViolationTimeRef.current = now;
 
-      setViolationCount((prevCount) => {
-        const nextCount = prevCount + 1;
-        setViolationBreakdown((prevBreakdown) => {
-          const nextBreakdown = {
-            ...prevBreakdown,
-            [type]: (prevBreakdown[type] || 0) + 1,
-          };
-          syncViolation(type, nextCount, nextBreakdown);
-          return nextBreakdown;
-        });
-        return nextCount;
-      });
+      const nextCount = violationCountRef.current + 1;
+      violationCountRef.current = nextCount;
+      const nextBreakdown: ViolationBreakdown = {
+        ...violationBreakdownRef.current,
+        [type]: (violationBreakdownRef.current[type] || 0) + 1,
+      };
+      violationBreakdownRef.current = nextBreakdown;
 
-      setShowToast(true);
+      setViolationCount(nextCount);
+      setViolationBreakdown(nextBreakdown);
+
+      // Call syncViolation EXACTLY ONCE outside of React state updaters!
+      syncViolation(type, nextCount, nextBreakdown);
+
+      if (!isStealthMode) {
+        setShowToast(true);
+      }
     },
-    [syncViolation],
+    [syncViolation, isStealthMode],
   );
 
-  // Anti-Cheat Event Listeners for Tab Switch, Alt+Tab, Copy/Paste, Right-Click, and Mobile Long-Press
+  // Anti-Cheat Event Listeners for Tab Switch and Window Switch (with protective interceptors for devtools/right-click)
   useEffect(() => {
     if (isNameGateOpen || isCompleted) return;
 
@@ -452,7 +475,8 @@ function QuizContent() {
           isGracePeriodRef.current ||
           showFinishConfirmRef.current ||
           showFinishTutorialRef.current ||
-          isCompletedRef.current
+          isCompletedRef.current ||
+          isFullscreenLostRef.current
         ) return;
         if (Date.now() - lastFinishCancelTimeRef.current < 2000) return;
         if (Date.now() - lastTutorialCloseTimeRef.current < 2500) return;
@@ -473,11 +497,10 @@ function QuizContent() {
       }, 150);
     };
 
-    // 4. Context menu (Right-click & mobile long-press menu)
+    // 4. Context menu interceptor (Right-click & mobile long-press menu protection)
     const handleContextMenu = (e: Event) => {
       if (showFinishTutorialRef.current) return;
       e.preventDefault();
-      triggerViolation("contextmenu");
     };
 
     // 5. Mouse right-click interceptor (button === 2)
@@ -485,7 +508,6 @@ function QuizContent() {
       if (showFinishTutorialRef.current) return;
       if (e.button === 2) {
         e.preventDefault();
-        triggerViolation("contextmenu");
       }
     };
 
@@ -493,47 +515,17 @@ function QuizContent() {
     const handleCopyCutPaste = (e: Event) => {
       if (showFinishTutorialRef.current) return;
       e.preventDefault();
-      triggerViolation("clipboard");
     };
 
-    // 7. Mobile long-press detector ("tahan di HP")
-    let touchTimer: NodeJS.Timeout | null = null;
-    let startX = 0;
-    let startY = 0;
-
+    // 7. Mobile multi-touch gesture prevention
     const handleTouchStart = (e: TouchEvent) => {
       if (showFinishTutorialRef.current) return;
       if (e.touches.length > 1) {
-        triggerViolation("contextmenu");
-        return;
-      }
-      const touch = e.touches[0];
-      if (touch) {
-        startX = touch.clientX;
-        startY = touch.clientY;
-      }
-      if (touchTimer) clearTimeout(touchTimer);
-      touchTimer = setTimeout(() => {
-        triggerViolation("contextmenu");
-      }, 400);
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (touch) {
-        const deltaX = Math.abs(touch.clientX - startX);
-        const deltaY = Math.abs(touch.clientY - startY);
-        if (deltaX > 8 || deltaY > 8) {
-          if (touchTimer) clearTimeout(touchTimer);
-        }
+        e.preventDefault();
       }
     };
 
-    const handleTouchEndCancel = () => {
-      if (touchTimer) clearTimeout(touchTimer);
-    };
-
-    // 8. Intercept keyboard shortcuts
+    // 8. Intercept keyboard shortcuts (F12, Inspect, Copy/Paste)
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       if (
@@ -545,7 +537,6 @@ function QuizContent() {
       ) {
         e.preventDefault();
         e.stopPropagation();
-        triggerViolation(key === "c" || key === "v" || key === "x" ? "clipboard" : "contextmenu");
       }
     };
 
@@ -558,9 +549,13 @@ function QuizContent() {
       );
 
       if (!isFs) {
-        setIsFullscreenLost(true);
-        triggerViolation("window");
+        if (!isFullscreenLostRef.current) {
+          isFullscreenLostRef.current = true;
+          setIsFullscreenLost(true);
+          triggerViolation("window");
+        }
       } else {
+        isFullscreenLostRef.current = false;
         setIsFullscreenLost(false);
         isGracePeriodRef.current = true;
         setTimeout(() => {
@@ -585,8 +580,11 @@ function QuizContent() {
         (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement
       );
       if (!isFs) {
-        setIsFullscreenLost(true);
-        triggerViolation("window");
+        if (!isFullscreenLostRef.current) {
+          isFullscreenLostRef.current = true;
+          setIsFullscreenLost(true);
+          triggerViolation("window");
+        }
       }
     }, 500);
 
@@ -607,9 +605,6 @@ function QuizContent() {
     document.addEventListener("paste", handleCopyCutPaste, true);
     window.addEventListener("keydown", handleKeyDown, true);
     window.addEventListener("touchstart", handleTouchStart, true);
-    window.addEventListener("touchmove", handleTouchMove, true);
-    window.addEventListener("touchend", handleTouchEndCancel, true);
-    window.addEventListener("touchcancel", handleTouchEndCancel, true);
 
     return () => {
       clearTimeout(initialFsTimer);
@@ -630,10 +625,6 @@ function QuizContent() {
       document.removeEventListener("paste", handleCopyCutPaste, true);
       window.removeEventListener("keydown", handleKeyDown, true);
       window.removeEventListener("touchstart", handleTouchStart, true);
-      window.removeEventListener("touchmove", handleTouchMove, true);
-      window.removeEventListener("touchend", handleTouchEndCancel, true);
-      window.removeEventListener("touchcancel", handleTouchEndCancel, true);
-      if (touchTimer) clearTimeout(touchTimer);
     };
   }, [isNameGateOpen, isCompleted, submissionId, triggerViolation]);
 
@@ -657,37 +648,38 @@ function QuizContent() {
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono">
-            <div className="flex justify-between text-neutral-400 border-b border-neutral-900 pb-2">
-              <span>{language === "id" ? "Nama peserta" : "Participant"}:</span>
-              <span className="text-neutral-100 font-bold">{participantName}</span>
+          {isStealthMode ? (
+            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono">
+              <div className="flex justify-between text-neutral-400">
+                <span>{language === "id" ? "Nama peserta" : "Participant"}:</span>
+                <span className="text-neutral-100 font-bold">{participantName}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-neutral-400">
-              <span>{language === "id" ? "Pelanggaran Total" : "Total Violations"}:</span>
-              <span className={violationCount > 0 ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>
-                {violationCount}
-              </span>
-            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2 text-xs font-mono">
+              <div className="flex justify-between text-neutral-400 border-b border-neutral-900 pb-2">
+                <span>{language === "id" ? "Nama peserta" : "Participant"}:</span>
+                <span className="text-neutral-100 font-bold">{participantName}</span>
+              </div>
+              <div className="flex justify-between text-neutral-400">
+                <span>{language === "id" ? "Pelanggaran Total" : "Total Violations"}:</span>
+                <span className={violationCount > 0 ? "text-red-400 font-bold" : "text-emerald-400 font-bold"}>
+                  {violationCount}
+                </span>
+              </div>
 
-            <div className="pt-2 grid grid-cols-2 gap-2 text-[11px] text-left">
-              <div className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 flex justify-between">
-                <span className="text-neutral-400">{language === "id" ? "Pindah Tab" : "Tab Switch"}:</span>
-                <span className="font-bold text-neutral-200">{violationBreakdown.tab}</span>
-              </div>
-              <div className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 flex justify-between">
-                <span className="text-neutral-400">{language === "id" ? "Pindah Window" : "Window Switch"}:</span>
-                <span className="font-bold text-neutral-200">{violationBreakdown.window}</span>
-              </div>
-              <div className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 flex justify-between">
-                <span className="text-neutral-400">{language === "id" ? "Copy / Paste" : "Copy / Paste"}:</span>
-                <span className="font-bold text-neutral-200">{violationBreakdown.clipboard}</span>
-              </div>
-              <div className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 flex justify-between">
-                <span className="text-neutral-400">{language === "id" ? "Klik Kanan" : "Right Click"}:</span>
-                <span className="font-bold text-neutral-200">{violationBreakdown.contextmenu}</span>
+              <div className="pt-2 grid grid-cols-2 gap-2 text-[11px] text-left">
+                <div className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 flex justify-between">
+                  <span className="text-neutral-400">{language === "id" ? "Pindah Tab" : "Tab Switch"}:</span>
+                  <span className="font-bold text-neutral-200">{violationBreakdown.tab}</span>
+                </div>
+                <div className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 flex justify-between">
+                  <span className="text-neutral-400">{language === "id" ? "Pindah Window" : "Window Switch"}:</span>
+                  <span className="font-bold text-neutral-200">{violationBreakdown.window}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <Link href="/">
             <Button variant="default" size="default" className="w-full">
@@ -730,7 +722,7 @@ function QuizContent() {
               <Globe02Icon className="w-3.5 h-3.5 text-neutral-400" />
               {language.toUpperCase()}
             </button>
-            <SecurityBadge violationCount={violationCount} />
+            {!isStealthMode && <SecurityBadge violationCount={violationCount} />}
           </div>
 
           {/* Floating Bottom Finish Bar (Prominent Notice) */}
@@ -873,7 +865,7 @@ function QuizContent() {
 
       {/* Non-intrusive Violation Toast Notification */}
       <ViolationToast
-        show={showToast}
+        show={!isStealthMode && showToast}
         violationCount={violationCount}
         onClose={() => setShowToast(false)}
       />

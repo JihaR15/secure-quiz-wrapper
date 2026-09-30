@@ -5,6 +5,7 @@ import {
   getSubmissionsByQuizIds,
   createQuiz,
   updateQuizResultUrl,
+  updateQuizStealthMode,
   deleteQuiz,
 } from "@/lib/db";
 import type { Quiz } from "@/lib/types";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, formUrl, resultUrl } = body;
+    const { title, formUrl, resultUrl, isStealthMode } = body;
 
     if (!title || !formUrl) {
       return NextResponse.json(
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
       formUrl,
       encodedUrl,
       resultUrl: trimmedResult || null,
+      isStealthMode: typeof isStealthMode === "boolean" ? isStealthMode : false,
       createdAt: new Date().toISOString(),
     };
 
@@ -92,28 +94,49 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { quizId, resultUrl } = body;
+    const { quizId, resultUrl, isStealthMode } = body;
 
-    if (!quizId || typeof resultUrl !== "string") {
+    if (!quizId) {
       return NextResponse.json(
-        { error: "Quiz ID dan link hasil wajib diisi." },
+        { error: "Quiz ID wajib diisi." },
         { status: 400 }
       );
     }
 
-    const trimmed = resultUrl.trim();
-    if (trimmed && !isHttpUrl(trimmed)) {
-      return NextResponse.json(
-        { error: "Link hasil harus berupa URL yang diawali http:// atau https://" },
-        { status: 400 }
-      );
+    let updated: Quiz | null = null;
+
+    if (typeof isStealthMode === "boolean") {
+      updated = await updateQuizStealthMode(quizId, admin.id, isStealthMode);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },
+          { status: 404 }
+        );
+      }
     }
 
-    const updated = await updateQuizResultUrl(quizId, admin.id, trimmed || null);
+    if (typeof resultUrl === "string") {
+      const trimmed = resultUrl.trim();
+      if (trimmed && !isHttpUrl(trimmed)) {
+        return NextResponse.json(
+          { error: "Link hasil harus berupa URL yang diawali http:// atau https://" },
+          { status: 400 }
+        );
+      }
+
+      updated = await updateQuizResultUrl(quizId, admin.id, trimmed || null);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },
+          { status: 404 }
+        );
+      }
+    }
+
     if (!updated) {
       return NextResponse.json(
-        { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },
-        { status: 404 }
+        { error: "Tidak ada perubahan yang diberikan." },
+        { status: 400 }
       );
     }
 
@@ -121,7 +144,7 @@ export async function PATCH(request: Request) {
   } catch (error) {
     console.error("[api/quizzes] PATCH gagal:", error);
     return NextResponse.json(
-      { error: "Gagal menyimpan link hasil kuis." },
+      { error: "Gagal memperbarui kuis." },
       { status: 500 }
     );
   }

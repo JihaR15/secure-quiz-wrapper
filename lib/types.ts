@@ -14,10 +14,12 @@ export interface Quiz {
   encodedUrl: string;
   /** Optional link to the published results sheet, supplied by the teacher. */
   resultUrl: string | null;
+  /** When true, hides violation warnings and counts from participants (logged secretly for admin). */
+  isStealthMode: boolean;
   createdAt: string;
 }
 
-export type ViolationType = "tab" | "window" | "clipboard" | "contextmenu";
+export type ViolationType = "tab" | "window";
 
 export type ViolationBreakdown = Record<ViolationType, number>;
 

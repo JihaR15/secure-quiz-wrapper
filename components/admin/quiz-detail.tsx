@@ -9,6 +9,7 @@ import {
   Copy01Icon,
   Download01Icon,
   Edit02Icon,
+  HelpCircleIcon,
   QrCode01Icon,
   Ticket01Icon,
 } from "hugeicons-react";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ParticipantTable } from "@/components/admin/participant-table";
 import { useLanguage, useTheme } from "@/components/providers";
 import { formatDate, getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
@@ -31,6 +33,7 @@ type QuizDetailProps = {
   onCopy: (quiz: QuizWithSubmissions) => void;
   onRequestDeleteSubmission: (submission: Submission) => void;
   onUpdateResultUrl: (quizId: string, resultUrl: string) => Promise<boolean>;
+  onUpdateStealthMode?: (quizId: string, isStealthMode: boolean) => Promise<boolean>;
 };
 
 function formHost(formUrl: string): string {
@@ -74,6 +77,7 @@ export function QuizDetail({
   onCopy,
   onRequestDeleteSubmission,
   onUpdateResultUrl,
+  onUpdateStealthMode,
 }: QuizDetailProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
@@ -83,7 +87,25 @@ export function QuizDetail({
   const [resultDraft, setResultDraft] = React.useState(quiz.resultUrl ?? "");
   const [savingResult, setSavingResult] = React.useState(false);
   const [resultError, setResultError] = React.useState("");
+  const [optimisticStealth, setOptimisticStealth] = React.useState<boolean | null>(null);
+  const [updatingStealth, setUpdatingStealth] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("access");
+
+  const isStealth = optimisticStealth ?? (quiz.isStealthMode ?? false);
+
+  async function handleToggleStealth(checked: boolean) {
+    if (!onUpdateStealthMode || updatingStealth) return;
+    setUpdatingStealth(true);
+    setOptimisticStealth(checked);
+    const success = await onUpdateStealthMode(quiz.id, checked);
+    setOptimisticStealth(null);
+    if (!success) {
+      toast.error(t.toastNetworkError);
+    } else {
+      toast.success(t.stealthModeUpdated);
+    }
+    setUpdatingStealth(false);
+  }
 
   const violations = quiz.submissions.reduce(
     (total, submission) => total + submission.violationCount,
@@ -215,7 +237,7 @@ export function QuizDetail({
 
       {/* Tab Switcher: Akses Kuis vs Hasil & Pelanggaran */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <TabsList className="h-10 p-1 bg-muted/60">
             <TabsTrigger value="access" className="gap-2 px-3.5 text-xs font-medium">
               <QrCode01Icon className="size-3.5" />
@@ -228,6 +250,44 @@ export function QuizDetail({
               </span>
             </TabsTrigger>
           </TabsList>
+
+          {/* Stealth Mode (Mode Sembunyi) Toggle di sebelah kanan sejajar tab */}
+          <div className="flex items-center gap-2.5 rounded-lg border border-border/80 bg-muted/40 px-3 h-10 select-none">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-medium text-foreground">
+                {t.stealthModeLabel}
+              </span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex size-4 items-center justify-center text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
+                    aria-label={t.stealthModeToggleDesc}
+                  >
+                    <HelpCircleIcon className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-[280px] text-center text-xs">
+                  {t.stealthModeToggleDesc}
+                </TooltipContent>
+              </Tooltip>
+            </div>
+
+            <label
+              htmlFor={`toggle-stealth-${quiz.id}`}
+              className="relative inline-flex cursor-pointer items-center"
+            >
+              <input
+                id={`toggle-stealth-${quiz.id}`}
+                type="checkbox"
+                checked={isStealth}
+                disabled={updatingStealth}
+                onChange={(e) => void handleToggleStealth(e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:bg-amber-600 peer-checked:after:translate-x-full peer-focus:outline-none" />
+            </label>
+          </div>
         </div>
 
         <TabsContent value="access" className="mt-4 space-y-6">

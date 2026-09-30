@@ -81,12 +81,10 @@ function BreakdownAccordionContent({
   const items = [
     { key: "tab", label: t.vioTab, count: breakdownValue(submission, "tab") },
     { key: "window", label: t.vioWindow, count: breakdownValue(submission, "window") },
-    { key: "clipboard", label: t.vioClipboard, count: breakdownValue(submission, "clipboard") },
-    { key: "contextmenu", label: t.vioContext, count: breakdownValue(submission, "contextmenu") },
   ] as const;
 
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/30 p-3 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2 rounded-lg border border-border/60 bg-muted/30 p-3">
       {items.map((item) => (
         <div
           key={item.key}
