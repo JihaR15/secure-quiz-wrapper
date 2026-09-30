@@ -6,6 +6,7 @@ import {
   createQuiz,
   updateQuizResultUrl,
   updateQuizStealthMode,
+  updateQuiz,
   deleteQuiz,
 } from "@/lib/db";
 import type { Quiz } from "@/lib/types";
@@ -94,7 +95,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { quizId, resultUrl, isStealthMode } = body;
+    const { quizId, resultUrl, isStealthMode, title, formUrl } = body;
 
     if (!quizId) {
       return NextResponse.json(
@@ -104,6 +105,40 @@ export async function PATCH(request: Request) {
     }
 
     let updated: Quiz | null = null;
+
+    if (title !== undefined || formUrl !== undefined) {
+      const updates: { title?: string; formUrl?: string; encodedUrl?: string } = {};
+
+      if (title !== undefined) {
+        if (typeof title !== "string" || !title.trim()) {
+          return NextResponse.json(
+            { error: "Judul kuis tidak boleh kosong." },
+            { status: 400 }
+          );
+        }
+        updates.title = title.trim();
+      }
+
+      if (formUrl !== undefined) {
+        if (typeof formUrl !== "string" || !formUrl.trim() || !isHttpUrl(formUrl.trim())) {
+          return NextResponse.json(
+            { error: "URL formulir harus berupa URL yang diawali http:// atau https://" },
+            { status: 400 }
+          );
+        }
+        const trimmedForm = formUrl.trim();
+        updates.formUrl = trimmedForm;
+        updates.encodedUrl = encodeFormUrl(trimmedForm);
+      }
+
+      updated = await updateQuiz(quizId, admin.id, updates);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },
+          { status: 404 }
+        );
+      }
+    }
 
     if (typeof isStealthMode === "boolean") {
       updated = await updateQuizStealthMode(quizId, admin.id, isStealthMode);

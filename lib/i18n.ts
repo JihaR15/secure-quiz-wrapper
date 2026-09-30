@@ -265,6 +265,11 @@ const id = {
   stealthModeToggleActive: "Mode Sembunyi Aktif (Peringatan & badge disembunyikan dari peserta)",
   stealthModeToggleInactive: "Mode Normal (Peserta melihat badge & peringatan pelanggaran)",
   stealthModeUpdated: "Pengaturan Mode Sembunyi berhasil diperbarui.",
+  editQuiz: "Edit Kuis",
+  editQuizDialogTitle: "Ubah Data Kuis",
+  editQuizDialogDesc: "Perbarui judul kuis atau URL formulir Google Forms / Microsoft Forms.",
+  quizUpdated: "Data kuis berhasil diperbarui.",
+  quizUpdateFailed: "Gagal memperbarui data kuis.",
 } as const;
 
 const en: Record<keyof typeof id, string> = {
@@ -527,6 +532,11 @@ const en: Record<keyof typeof id, string> = {
   stealthModeToggleActive: "Stealth Mode Active (Warnings & badge hidden from participant)",
   stealthModeToggleInactive: "Normal Mode (Participants can see their badge & violation warnings)",
   stealthModeUpdated: "Stealth Mode setting updated successfully.",
+  editQuiz: "Edit Assessment",
+  editQuizDialogTitle: "Edit Assessment Details",
+  editQuizDialogDesc: "Update assessment title or target form URL (Google Forms / Microsoft Forms).",
+  quizUpdated: "Assessment updated successfully.",
+  quizUpdateFailed: "Failed to update assessment.",
 };
 
 export type Translation = Record<keyof typeof id, string>;

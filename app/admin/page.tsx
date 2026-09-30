@@ -272,6 +272,29 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleUpdateQuiz = async (
+    quizId: string,
+    updates: { title: string; formUrl: string; resultUrl?: string }
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/quizzes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quizId,
+          title: updates.title,
+          formUrl: updates.formUrl,
+          resultUrl: updates.resultUrl,
+        }),
+      });
+      if (!res.ok) return false;
+      await loadQuizzes(undefined, true);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleCopyLink = async (quiz: QuizWithSubmissions) => {
     const fullUrl = getQuizUrl(origin, quiz);
 
@@ -503,6 +526,7 @@ export default function AdminDashboardPage() {
                     onRequestDeleteSubmission={setSubmissionPendingDelete}
                     onUpdateResultUrl={handleUpdateResultUrl}
                     onUpdateStealthMode={handleUpdateStealthMode}
+                    onUpdateQuiz={handleUpdateQuiz}
                   />
                 ) : (
                   <div className="rounded-xl border border-dashed border-border px-6 py-16 text-center">

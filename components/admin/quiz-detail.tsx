@@ -14,14 +14,14 @@ import {
   Ticket01Icon,
 } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ParticipantTable } from "@/components/admin/participant-table";
+import { EditQuizModal } from "@/components/admin/edit-quiz-modal";
 import { useLanguage, useTheme } from "@/components/providers";
 import { formatDate, getQuizUrl, QuizWithSubmissions } from "@/lib/quiz-format";
-import { describeResultHost, isHttpUrl } from "@/lib/result-url";
+import { describeResultHost } from "@/lib/result-url";
 import { downloadQrPng } from "@/lib/download-qr";
 import type { Submission } from "@/lib/db";
 
@@ -32,8 +32,12 @@ type QuizDetailProps = {
   copied: boolean;
   onCopy: (quiz: QuizWithSubmissions) => void;
   onRequestDeleteSubmission: (submission: Submission) => void;
-  onUpdateResultUrl: (quizId: string, resultUrl: string) => Promise<boolean>;
+  onUpdateResultUrl?: (quizId: string, resultUrl: string) => Promise<boolean>;
   onUpdateStealthMode?: (quizId: string, isStealthMode: boolean) => Promise<boolean>;
+  onUpdateQuiz?: (
+    quizId: string,
+    updates: { title: string; formUrl: string; resultUrl?: string }
+  ) => Promise<boolean>;
 };
 
 function formHost(formUrl: string): string {
@@ -76,19 +80,16 @@ export function QuizDetail({
   copied,
   onCopy,
   onRequestDeleteSubmission,
-  onUpdateResultUrl,
   onUpdateStealthMode,
+  onUpdateQuiz,
 }: QuizDetailProps) {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const url = getQuizUrl(origin, quiz);
 
-  const [editingResult, setEditingResult] = React.useState(false);
-  const [resultDraft, setResultDraft] = React.useState(quiz.resultUrl ?? "");
-  const [savingResult, setSavingResult] = React.useState(false);
-  const [resultError, setResultError] = React.useState("");
   const [optimisticStealth, setOptimisticStealth] = React.useState<boolean | null>(null);
   const [updatingStealth, setUpdatingStealth] = React.useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("access");
 
   const isStealth = optimisticStealth ?? (quiz.isStealthMode ?? false);
@@ -107,30 +108,23 @@ export function QuizDetail({
     setUpdatingStealth(false);
   }
 
+  async function handleSaveQuiz(updates: {
+    title: string;
+    formUrl: string;
+    resultUrl: string;
+  }) {
+    if (!onUpdateQuiz) return false;
+    const ok = await onUpdateQuiz(quiz.id, updates);
+    if (ok) {
+      toast.success(t.quizUpdated);
+    }
+    return ok;
+  }
+
   const violations = quiz.submissions.reduce(
     (total, submission) => total + submission.violationCount,
     0,
   );
-
-  async function handleSaveResultUrl() {
-    const next = resultDraft.trim();
-    if (next && !isHttpUrl(next)) {
-      setResultError(t.resultUrlInvalid);
-      return;
-    }
-
-    setSavingResult(true);
-    setResultError("");
-    const saved = await onUpdateResultUrl(quiz.id, next);
-    setSavingResult(false);
-
-    if (saved) {
-      setEditingResult(false);
-      toast.success(next ? t.resultUrlSaved : t.resultUrlCleared);
-    } else {
-      setResultError(t.toastCreateFailed);
-    }
-  }
 
   async function handleDownloadQr() {
     try {
@@ -177,16 +171,12 @@ export function QuizDetail({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                setResultDraft(quiz.resultUrl ?? "");
-                setEditingResult((value) => !value);
-                setResultError("");
-              }}
+              onClick={() => setIsEditModalOpen(true)}
               className="h-10 gap-2 sm:h-8"
-              title={t.editResultLink}
+              title={t.editQuiz}
             >
-              <Edit02Icon className="size-4" />
-              {t.editResultLink}
+              <Edit02Icon className="size-4 text-primary" />
+              {t.editQuiz}
             </Button>
             <Button asChild variant="outline" size="sm" className="h-10 shrink-0 gap-2 sm:h-8">
               <a
@@ -351,15 +341,14 @@ export function QuizDetail({
           </div>
 
           <div className="space-y-4 border-t border-border pt-6">
-            {/* Results link. Read-only card until the teacher asks to edit, so the
-                common case stays a single obvious button. */}
+            {/* Results link card */}
             <div className="rounded-lg border border-border bg-muted/30 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <p className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-muted-foreground">
                     {t.resultUrlLabel}
                   </p>
-                  {editingResult ? null : quiz.resultUrl ? (
+                  {quiz.resultUrl ? (
                     <a
                       href={quiz.resultUrl}
                       target="_blank"
@@ -372,82 +361,35 @@ export function QuizDetail({
                     <p className="text-sm text-muted-foreground">{t.resultUrlEmpty}</p>
                   )}
                 </div>
-                {editingResult ? null : quiz.resultUrl ? (
+
+                <div className="flex items-center gap-2">
+                  {quiz.resultUrl ? (
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-9 gap-2"
+                      title={t.openInNewTab}
+                    >
+                      <a href={quiz.resultUrl} target="_blank" rel="noopener noreferrer">
+                        <ArrowUpRight01Icon className="size-4" />
+                        {t.viewResults}
+                      </a>
+                    </Button>
+                  ) : null}
                   <Button
-                    asChild
+                    type="button"
                     variant="outline"
                     size="sm"
+                    onClick={() => setIsEditModalOpen(true)}
                     className="h-9 gap-2"
-                    title={t.openInNewTab}
+                    title={t.editQuiz}
                   >
-                    <a href={quiz.resultUrl} target="_blank" rel="noopener noreferrer">
-                      <ArrowUpRight01Icon className="size-4" />
-                      {t.viewResults}
-                    </a>
+                    <Edit02Icon className="size-4" />
+                    <span>{t.editQuiz}</span>
                   </Button>
-                ) : null}
-              </div>
-
-              {editingResult ? (
-                <div className="mt-3 space-y-2">
-                  <Label htmlFor={`result-url-${quiz.id}`} className="sr-only">
-                    {t.resultUrlLabel}
-                  </Label>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <Input
-                      id={`result-url-${quiz.id}`}
-                      type="url"
-                      inputMode="url"
-                      autoFocus
-                      spellCheck={false}
-                      value={resultDraft}
-                      onChange={(event) => {
-                        setResultDraft(event.target.value);
-                        if (resultError) setResultError("");
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          void handleSaveResultUrl();
-                        }
-                      }}
-                      placeholder={t.resultUrlPlaceholder}
-                      aria-invalid={resultError ? true : undefined}
-                      className="h-10 flex-1 font-mono text-xs"
-                    />
-                    <Button
-                      type="button"
-                      onClick={() => void handleSaveResultUrl()}
-                      disabled={savingResult}
-                      className="h-10 shrink-0 gap-2 sm:w-28"
-                    >
-                      <CheckmarkCircle01Icon className="size-4" />
-                      {t.save}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => {
-                        setEditingResult(false);
-                        setResultDraft(quiz.resultUrl ?? "");
-                        setResultError("");
-                      }}
-                      className="h-10 shrink-0 sm:w-24"
-                    >
-                      {t.cancel}
-                    </Button>
-                  </div>
-                  {resultError ? (
-                    <p role="alert" className="text-xs text-destructive">
-                      {resultError}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      {t.resultUrlHint}
-                    </p>
-                  )}
                 </div>
-              ) : null}
+              </div>
             </div>
           </div>
         </TabsContent>
@@ -462,6 +404,15 @@ export function QuizDetail({
           </div>
         </TabsContent>
       </Tabs>
+
+      <EditQuizModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        initialTitle={quiz.title}
+        initialFormUrl={quiz.formUrl}
+        initialResultUrl={quiz.resultUrl}
+        onSave={handleSaveQuiz}
+      />
     </div>
   );
 }

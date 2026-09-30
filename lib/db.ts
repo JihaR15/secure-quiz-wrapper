@@ -35,6 +35,11 @@ interface Store {
   createQuiz(quiz: Quiz): Promise<Quiz>;
   updateQuizResultUrl(quizId: string, adminId: string, resultUrl: string | null): Promise<Quiz | null>;
   updateQuizStealthMode(quizId: string, adminId: string, isStealthMode: boolean): Promise<Quiz | null>;
+  updateQuiz(
+    quizId: string,
+    adminId: string,
+    updates: { title?: string; formUrl?: string; encodedUrl?: string }
+  ): Promise<Quiz | null>;
   deleteQuiz(quizId: string, adminId: string): Promise<boolean>;
   getSubmissionsByQuiz(quizId: string): Promise<Submission[]>;
   getSubmissionsByQuizIds(quizIds: string[]): Promise<Submission[]>;
@@ -177,6 +182,17 @@ const jsonStore: Store = {
     const quiz = db.quizzes.find((q) => q.id === quizId && q.adminId === adminId);
     if (!quiz) return null;
     quiz.isStealthMode = isStealthMode;
+    writeJsonDb(db);
+    return withQuizDefaults(quiz);
+  },
+
+  async updateQuiz(quizId, adminId, updates) {
+    const db = readJsonDb();
+    const quiz = db.quizzes.find((q) => q.id === quizId && q.adminId === adminId);
+    if (!quiz) return null;
+    if (typeof updates.title === "string") quiz.title = updates.title;
+    if (typeof updates.formUrl === "string") quiz.formUrl = updates.formUrl;
+    if (typeof updates.encodedUrl === "string") quiz.encodedUrl = updates.encodedUrl;
     writeJsonDb(db);
     return withQuizDefaults(quiz);
   },
@@ -445,6 +461,27 @@ function createPostgresStore(connectionString: string): Store {
       return rows[0] ? toQuiz(rows[0]) : null;
     },
 
+    async updateQuiz(quizId, adminId, updates) {
+      const existing = await sql<QuizRow[]>`
+        select * from quizzes where id = ${quizId} and admin_id = ${adminId}
+      `;
+      if (!existing[0]) return null;
+
+      const title = typeof updates.title === "string" ? updates.title : existing[0].title;
+      const formUrl = typeof updates.formUrl === "string" ? updates.formUrl : existing[0].form_url;
+      const encodedUrl = typeof updates.encodedUrl === "string" ? updates.encodedUrl : existing[0].encoded_url;
+
+      const rows = await sql<QuizRow[]>`
+        update quizzes
+        set title = ${title},
+            form_url = ${formUrl},
+            encoded_url = ${encodedUrl}
+        where id = ${quizId} and admin_id = ${adminId}
+        returning *
+      `;
+      return rows[0] ? toQuiz(rows[0]) : null;
+    },
+
     async deleteQuiz(quizId, adminId) {
       // submissions are removed by the on delete cascade in supabase/schema.sql
       const rows = await sql<{ id: string }[]>`
@@ -617,6 +654,14 @@ export function updateQuizStealthMode(
   isStealthMode: boolean
 ): Promise<Quiz | null> {
   return getStore().updateQuizStealthMode(quizId, adminId, isStealthMode);
+}
+
+export function updateQuiz(
+  quizId: string,
+  adminId: string,
+  updates: { title?: string; formUrl?: string; encodedUrl?: string }
+): Promise<Quiz | null> {
+  return getStore().updateQuiz(quizId, adminId, updates);
 }
 
 export function deleteQuiz(quizId: string, adminId: string): Promise<boolean> {
