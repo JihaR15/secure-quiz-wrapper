@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight01Icon, Alert02Icon } from "hugeicons-react";
 import { AuthShell } from "@/components/site/auth-shell";
@@ -14,7 +13,6 @@ import { useLanguage } from "@/components/providers";
 const FIELD_CLASS = "h-10";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const { t } = useLanguage();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -27,12 +25,18 @@ export default function AdminLoginPage() {
     setError("");
     setPending(true);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim(), password }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
+
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -42,10 +46,16 @@ export default function AdminLoginPage() {
       }
 
       toast.success(t.loginCta);
-      router.replace("/admin");
-      router.refresh();
-    } catch {
-      setError(t.toastNetworkError);
+      // Intentional hard navigation ensures browser sends fresh session cookie to /admin middleware
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/admin";
+    } catch (err: unknown) {
+      clearTimeout(timeoutId);
+      if (err instanceof Error && err.name === "AbortError") {
+        setError(t.toastNetworkError);
+      } else {
+        setError(t.toastNetworkError);
+      }
       setPending(false);
     }
   };

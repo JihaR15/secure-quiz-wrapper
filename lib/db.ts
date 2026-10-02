@@ -337,15 +337,18 @@ const toSubmission = (row: SubmissionRow): Submission => ({
   startedAt: iso(row.started_at),
   lastActiveAt: iso(row.last_active_at),
 });
-
 function createPostgresStore(connectionString: string): Store {
-  // prepare:false keeps the pooler in transaction mode working, and a small
-  // pool per warm lambda keeps us well inside the provider's connection cap.
+  const isLocal =
+    connectionString.includes("localhost") ||
+    connectionString.includes("127.0.0.1") ||
+    connectionString.includes("sslmode=disable");
+
   const sql = postgres(connectionString, {
     prepare: false,
     max: Number(process.env.DATABASE_POOL_MAX ?? 2),
     idle_timeout: 20,
     connect_timeout: 10,
+    ssl: isLocal ? false : "require",
   });
 
   return {
