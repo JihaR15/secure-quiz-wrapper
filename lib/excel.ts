@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { Submission } from "@/lib/db";
+import { formatDuration } from "@/lib/quiz-format";
 
 export function generateExcelReport(
   quizTitle: string,
@@ -23,6 +24,7 @@ export function generateExcelReport(
       "Tingkat Risiko": riskLevel,
       "Waktu Mulai": new Date(sub.startedAt).toLocaleString("id-ID"),
       "Aktivitas Terakhir": new Date(sub.lastActiveAt).toLocaleString("id-ID"),
+      "Durasi Pengerjaan": formatDuration(sub.startedAt, sub.lastActiveAt, "id"),
     };
   });
 
@@ -38,10 +40,11 @@ export function generateExcelReport(
     { wch: 28 }, // Tingkat Risiko
     { wch: 24 }, // Waktu Mulai
     { wch: 24 }, // Aktivitas Terakhir
+    { wch: 18 }, // Durasi Pengerjaan
   ];
 
   // Set AutoFilter on header columns
-  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:H1");
+  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:I1");
   worksheet["!autofilter"] = { ref: XLSX.utils.encode_range(range) };
 
   const workbook = XLSX.utils.book_new();

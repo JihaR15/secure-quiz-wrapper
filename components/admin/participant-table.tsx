@@ -9,6 +9,8 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -28,9 +30,10 @@ import {
   ArrowRight01Icon,
   Search01Icon,
   FilterHorizontalIcon,
+  Sorting01Icon,
 } from "hugeicons-react";
 import { useLanguage } from "@/components/providers";
-import { formatTime, riskLevel } from "@/lib/quiz-format";
+import { formatDuration, formatTime, riskLevel } from "@/lib/quiz-format";
 import type { Translation } from "@/lib/i18n";
 import type { Submission } from "@/lib/db";
 
@@ -41,6 +44,7 @@ type ParticipantTableProps = {
 };
 
 type RiskOption = "none" | "warning" | "high";
+type SortOption = "newest" | "oldest" | "fastest" | "name";
 
 function riskBadge(risk: "none" | "warning" | "high", label: string) {
   return (
@@ -111,16 +115,61 @@ export function ParticipantTable({
   const [selectedRisks, setSelectedRisks] = React.useState<Set<RiskOption>>(
     new Set(["none", "warning", "high"])
   );
+  const [sortBy, setSortBy] = React.useState<SortOption>("newest");
   const [viewMode, setViewMode] = React.useState<"pagination" | "viewMore">("pagination");
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
 
-  // Ensure newest submissions are at the top
+  const getSortLabel = React.useCallback(
+    (sort: SortOption) => {
+      switch (sort) {
+        case "newest":
+          return t.sortNewest;
+        case "oldest":
+          return t.sortOldest;
+        case "fastest":
+          return t.sortFastest;
+        case "name":
+          return t.sortName;
+      }
+    },
+    [t]
+  );
+
+  // Sort submissions based on selected sortBy criteria
   const sortedSubmissions = React.useMemo(() => {
-    return [...submissions].sort(
-      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
-    );
-  }, [submissions]);
+    const list = [...submissions];
+
+    const getDurationMs = (sub: Submission) => {
+      const start = new Date(sub.startedAt).getTime();
+      const end = new Date(sub.lastActiveAt).getTime();
+      if (isNaN(start) || isNaN(end) || end < start) return Infinity;
+      return end - start;
+    };
+
+    switch (sortBy) {
+      case "oldest":
+        return list.sort(
+          (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime()
+        );
+      case "fastest":
+        return list.sort((a, b) => {
+          const durA = getDurationMs(a);
+          const durB = getDurationMs(b);
+          if (durA !== durB) return durA - durB;
+          return new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+        });
+      case "name":
+        return list.sort((a, b) =>
+          a.participantName.localeCompare(b.participantName, locale, { sensitivity: "base" })
+        );
+      case "newest":
+      default:
+        return list.sort(
+          (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+        );
+    }
+  }, [submissions, sortBy, locale]);
 
   // Counts for each violation status
   const normalCount = React.useMemo(
@@ -330,6 +379,47 @@ export function ParticipantTable({
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Single-Select Urutan / Sorting Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2 text-xs font-normal"
+              >
+                <Sorting01Icon className="size-3.5 text-muted-foreground" />
+                <span>{getSortLabel(sortBy)}</span>
+                <ArrowDown01Icon className="size-3 text-muted-foreground opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44 p-1.5">
+              <DropdownMenuLabel className="text-xs font-semibold px-2 py-1 text-muted-foreground">
+                {t.sortBy}
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={sortBy}
+                onValueChange={(val) => {
+                  setSortBy(val as SortOption);
+                  setPage(1);
+                }}
+              >
+                <DropdownMenuRadioItem value="newest" className="text-xs cursor-pointer">
+                  {t.sortNewest}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="oldest" className="text-xs cursor-pointer">
+                  {t.sortOldest}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="fastest" className="text-xs cursor-pointer">
+                  {t.sortFastest}
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="name" className="text-xs cursor-pointer">
+                  {t.sortName}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* View mode toggle (Pagination vs Lihat Semua) & counter */}
@@ -422,6 +512,10 @@ export function ParticipantTable({
                         <dd className="truncate">{formatTime(submission.startedAt, locale)}</dd>
                         <dt className="text-muted-foreground">{t.lastActive}</dt>
                         <dd className="truncate">{formatTime(submission.lastActiveAt, locale)}</dd>
+                        <dt className="text-muted-foreground">{t.duration}</dt>
+                        <dd className="truncate font-medium text-foreground">
+                          {formatDuration(submission.startedAt, submission.lastActiveAt, language)}
+                        </dd>
                       </dl>
                     </div>
 
@@ -478,6 +572,9 @@ export function ParticipantTable({
                   </TableHead>
                   <TableHead className="font-mono text-[0.6875rem] font-normal uppercase tracking-[0.12em] text-muted-foreground">
                     {t.lastActive}
+                  </TableHead>
+                  <TableHead className="font-mono text-[0.6875rem] font-normal uppercase tracking-[0.12em] text-muted-foreground">
+                    {t.duration}
                   </TableHead>
                   <TableHead className="pr-4 text-right font-mono text-[0.6875rem] font-normal uppercase tracking-[0.12em] text-muted-foreground">
                     {t.actions}
@@ -548,6 +645,10 @@ export function ParticipantTable({
                           {formatTime(submission.lastActiveAt, locale)}
                         </TableCell>
 
+                        <TableCell className="whitespace-nowrap font-mono text-xs tabular-nums font-medium text-foreground">
+                          {formatDuration(submission.startedAt, submission.lastActiveAt, language)}
+                        </TableCell>
+
                         <TableCell className="pr-4 text-right">
                           {deleteButton(submission, "inline-block")}
                         </TableCell>
@@ -555,7 +656,7 @@ export function ParticipantTable({
 
                       {isExpanded && (
                         <TableRow className="bg-muted/20 hover:bg-muted/20">
-                          <TableCell colSpan={6} className="p-3 pl-12 pr-4">
+                          <TableCell colSpan={7} className="p-3 pl-12 pr-4">
                             <BreakdownAccordionContent submission={submission} t={t} />
                           </TableCell>
                         </TableRow>
