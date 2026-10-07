@@ -104,7 +104,17 @@ export function QuizList({
                     <span className="block truncate text-sm font-medium tracking-[-0.01em]">
                       {quiz.title}
                     </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
+                    <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 font-mono text-[0.6875rem] tabular-nums text-muted-foreground">
+                      <span className={`inline-flex items-center gap-1 font-sans text-[0.65rem] font-medium px-1.5 py-0.5 rounded ${
+                        (quiz.isActive ?? true)
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                          : "bg-muted text-muted-foreground line-through decoration-transparent"
+                      }`}>
+                        <span className={`size-1.5 rounded-full ${
+                          (quiz.isActive ?? true) ? "bg-emerald-500" : "bg-muted-foreground/60"
+                        }`} />
+                        {(quiz.isActive ?? true) ? t.quizStatusActive : t.quizStatusInactive}
+                      </span>
                       <span>{formatDate(quiz.createdAt, locale)}</span>
                       <span>
                         {quiz.submissions.length} {t.participants.toLowerCase()}

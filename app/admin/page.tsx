@@ -272,6 +272,24 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleUpdateQuizActive = async (
+    quizId: string,
+    isActive: boolean
+  ): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/quizzes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizId, isActive }),
+      });
+      if (!res.ok) return false;
+      await loadQuizzes(undefined, true);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleUpdateQuiz = async (
     quizId: string,
     updates: { title: string; formUrl: string; resultUrl?: string }
@@ -526,6 +544,7 @@ export default function AdminDashboardPage() {
                     onRequestDeleteSubmission={setSubmissionPendingDelete}
                     onUpdateResultUrl={handleUpdateResultUrl}
                     onUpdateStealthMode={handleUpdateStealthMode}
+                    onUpdateQuizActive={handleUpdateQuizActive}
                     onUpdateQuiz={handleUpdateQuiz}
                   />
                 ) : (

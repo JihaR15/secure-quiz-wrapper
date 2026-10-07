@@ -35,6 +35,7 @@ interface Store {
   createQuiz(quiz: Quiz): Promise<Quiz>;
   updateQuizResultUrl(quizId: string, adminId: string, resultUrl: string | null): Promise<Quiz | null>;
   updateQuizStealthMode(quizId: string, adminId: string, isStealthMode: boolean): Promise<Quiz | null>;
+  updateQuizActive(quizId: string, adminId: string, isActive: boolean): Promise<Quiz | null>;
   updateQuiz(
     quizId: string,
     adminId: string,
@@ -162,6 +163,7 @@ const jsonStore: Store = {
       ...quiz,
       resultUrl: quiz.resultUrl ?? null,
       isStealthMode: quiz.isStealthMode ?? false,
+      isActive: quiz.isActive ?? true,
     };
     db.quizzes.push(stored);
     writeJsonDb(db);
@@ -182,6 +184,15 @@ const jsonStore: Store = {
     const quiz = db.quizzes.find((q) => q.id === quizId && q.adminId === adminId);
     if (!quiz) return null;
     quiz.isStealthMode = isStealthMode;
+    writeJsonDb(db);
+    return withQuizDefaults(quiz);
+  },
+
+  async updateQuizActive(quizId, adminId, isActive) {
+    const db = readJsonDb();
+    const quiz = db.quizzes.find((q) => q.id === quizId && q.adminId === adminId);
+    if (!quiz) return null;
+    quiz.isActive = isActive;
     writeJsonDb(db);
     return withQuizDefaults(quiz);
   },
@@ -284,6 +295,7 @@ interface QuizRow {
   encoded_url: string;
   result_url: string | null;
   is_stealth_mode?: boolean | null;
+  is_active?: boolean | null;
   created_at: Date | string;
 }
 
@@ -317,14 +329,16 @@ const toQuiz = (row: QuizRow): Quiz => ({
   encodedUrl: row.encoded_url,
   resultUrl: row.result_url ?? null,
   isStealthMode: row.is_stealth_mode ?? false,
+  isActive: row.is_active ?? true,
   createdAt: iso(row.created_at),
 });
 
-/** Quizzes written before resultUrl or isStealthMode existed receive defaults. */
+/** Quizzes written before resultUrl, isStealthMode, or isActive existed receive defaults. */
 const withQuizDefaults = (quiz: Quiz): Quiz => ({
   ...quiz,
   resultUrl: quiz.resultUrl ?? null,
   isStealthMode: quiz.isStealthMode ?? false,
+  isActive: quiz.isActive ?? true,
 });
 
 const toSubmission = (row: SubmissionRow): Submission => ({
@@ -433,10 +447,10 @@ function createPostgresStore(connectionString: string): Store {
 
     async createQuiz(quiz) {
       const rows = await sql<QuizRow[]>`
-        insert into quizzes (id, admin_id, title, form_url, encoded_url, result_url, is_stealth_mode, created_at)
+        insert into quizzes (id, admin_id, title, form_url, encoded_url, result_url, is_stealth_mode, is_active, created_at)
         values (
           ${quiz.id}, ${quiz.adminId}, ${quiz.title}, ${quiz.formUrl},
-          ${quiz.encodedUrl}, ${quiz.resultUrl ?? null}, ${quiz.isStealthMode ?? false},
+          ${quiz.encodedUrl}, ${quiz.resultUrl ?? null}, ${quiz.isStealthMode ?? false}, ${quiz.isActive ?? true},
           ${quiz.createdAt}
         )
         returning *
@@ -458,6 +472,16 @@ function createPostgresStore(connectionString: string): Store {
       const rows = await sql<QuizRow[]>`
         update quizzes
         set is_stealth_mode = ${isStealthMode}
+        where id = ${quizId} and admin_id = ${adminId}
+        returning *
+      `;
+      return rows[0] ? toQuiz(rows[0]) : null;
+    },
+
+    async updateQuizActive(quizId, adminId, isActive) {
+      const rows = await sql<QuizRow[]>`
+        update quizzes
+        set is_active = ${isActive}
         where id = ${quizId} and admin_id = ${adminId}
         returning *
       `;
@@ -657,6 +681,14 @@ export function updateQuizStealthMode(
   isStealthMode: boolean
 ): Promise<Quiz | null> {
   return getStore().updateQuizStealthMode(quizId, adminId, isStealthMode);
+}
+
+export function updateQuizActive(
+  quizId: string,
+  adminId: string,
+  isActive: boolean
+): Promise<Quiz | null> {
+  return getStore().updateQuizActive(quizId, adminId, isActive);
 }
 
 export function updateQuiz(

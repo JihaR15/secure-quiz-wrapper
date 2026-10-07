@@ -89,7 +89,7 @@ function QuizContent() {
     if (rawFormParam) {
       return decodeFormUrl(rawFormParam);
     }
-    return "https://docs.google.com/forms/d/e/1FAIpQLScf3nF9U3sR_SampleAssessment/viewform?embedded=true";
+    return null;
   }, [rawFormParam]);
 
   const [participantName, setParticipantName] = useState<string>("");
@@ -101,6 +101,9 @@ function QuizContent() {
     window: 0,
   });
   const [isStealthMode, setIsStealthMode] = useState<boolean>(false);
+  const [isQuizActive, setIsQuizActive] = useState<boolean>(true);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(Boolean(quizIdParam));
+  const [checkingStatus, setCheckingStatus] = useState<boolean>(false);
   const [showToast, setShowToast] = useState<boolean>(false);
   const [showFinishConfirm, setShowFinishConfirm] = useState<boolean>(false);
   const [showFinishTutorial, setShowFinishTutorial] = useState<boolean>(false);
@@ -120,6 +123,24 @@ function QuizContent() {
   const lastFinishCancelTimeRef = useRef<number>(0);
   const lastTutorialCloseTimeRef = useRef<number>(0);
   const isCompletedRef = useRef<boolean>(false);
+
+  // Function to re-check quiz status manually
+  const checkQuizStatus = React.useCallback(async () => {
+    if (!quizIdParam) return;
+    setCheckingStatus(true);
+    try {
+      const res = await fetch(`/api/quizzes/public?id=${encodeURIComponent(quizIdParam)}`);
+      const data = await res.json();
+      if (typeof data.isActive === "boolean") {
+        setIsQuizActive(data.isActive);
+      }
+      if (typeof data.isStealthMode === "boolean") {
+        setIsStealthMode(data.isStealthMode);
+      }
+    } catch {} finally {
+      setCheckingStatus(false);
+    }
+  }, [quizIdParam]);
 
   // Session restoration on page refresh
   useEffect(() => {
@@ -159,17 +180,32 @@ function QuizContent() {
     }
   }, [quizIdParam]);
 
-  // Fetch public quiz configuration (stealth mode)
+  // Fetch public quiz configuration (stealth mode & active status) on mount
   useEffect(() => {
     if (!quizIdParam) return;
+    let cancelled = false;
+
     fetch(`/api/quizzes/public?id=${encodeURIComponent(quizIdParam)}`)
       .then((res) => res.json())
       .then((data) => {
+        if (cancelled) return;
+        if (typeof data.isActive === "boolean") {
+          setIsQuizActive(data.isActive);
+        }
         if (typeof data.isStealthMode === "boolean") {
           setIsStealthMode(data.isStealthMode);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) {
+          setIsInitialLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [quizIdParam]);
 
   // Auto-focus main window after gate closes to ensure Alt+Tab detection works immediately
@@ -628,6 +664,60 @@ function QuizContent() {
     };
   }, [isNameGateOpen, isCompleted, submissionId, triggerViolation]);
 
+  // Loading screen while fetching initial public quiz status
+  if (isInitialLoading && !isCompleted) {
+    return (
+      <div className="w-screen h-screen max-w-[100vw] bg-neutral-950 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 animate-spin" />
+          <p className="text-xs font-mono text-neutral-400 tracking-wide">
+            {t.loadingSession || "Menyiapkan sesi kuis..."}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Inactive Quiz Screen when deactivated by admin
+  if (!isQuizActive && !isCompleted) {
+    return (
+      <div className="w-screen h-screen max-w-[100vw] bg-neutral-950 flex items-center justify-center p-6 font-sans">
+        <Card className="max-w-md w-full bg-neutral-900 border-neutral-800 text-center p-8 space-y-6 shadow-2xl">
+          <div className="w-16 h-16 rounded-3xl bg-amber-950/80 border border-amber-800/80 flex items-center justify-center text-amber-400 mx-auto">
+            <AlertCircleIcon className="w-8 h-8 stroke-[2]" />
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="font-serif text-2xl font-semibold text-white tracking-tight">
+              {t.quizInactiveTitle}
+            </h2>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              {t.quizInactiveDesc}
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Button
+              variant="default"
+              size="default"
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold"
+              disabled={checkingStatus}
+              onClick={checkQuizStatus}
+            >
+              {checkingStatus ? "Memeriksa..." : t.checkQuizStatus}
+            </Button>
+            <Link href="/" className="block">
+              <Button variant="outline" size="default" className="w-full">
+                <ArrowLeft01Icon className="w-4 h-4 mr-2" />
+                {t.backHome}
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   // Thank You Screen after completion
   if (isCompleted) {
     return (
@@ -870,18 +960,25 @@ function QuizContent() {
         onClose={() => setShowToast(false)}
       />
 
-      {/* Embedded Quiz Iframe */}
-      {targetUrl && !isNameGateOpen ? (
-        <iframe
-          ref={iframeRef}
-          src={targetUrl}
-          className={`w-full h-full border-0 bg-white transition-all duration-300 ${
-            showFinishTutorial ? "blur-[5px] pointer-events-none select-none opacity-80" : ""
-          } ${isFullscreenLost ? "invisible pointer-events-none" : ""}`}
-          title="Secure Assessment Session"
-          sandbox="allow-forms allow-scripts allow-same-origin"
-        />
+      {/* Embedded Quiz Iframe / Standby Background */}
+      {targetUrl ? (
+        !isNameGateOpen ? (
+          <iframe
+            ref={iframeRef}
+            src={targetUrl}
+            className={`w-full h-full border-0 bg-white transition-all duration-300 ${
+              showFinishTutorial ? "blur-[5px] pointer-events-none select-none opacity-80" : ""
+            } ${isFullscreenLost ? "invisible pointer-events-none" : ""}`}
+            title="Secure Assessment Session"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-modals allow-storage-access-by-user-activation"
+            allow="camera; microphone; geolocation; storage-access; fullscreen *"
+          />
+        ) : (
+          /* Neutral clean dark backdrop behind NameGateModal */
+          <div className="w-full h-full bg-neutral-950" />
+        )
       ) : (
+        /* Only show error card if targetUrl is truly missing/invalid */
         <div className="w-full h-full flex items-center justify-center p-6 bg-neutral-950">
           <Card className="max-w-md w-full space-y-6 text-center p-8 bg-neutral-900 border-neutral-800">
             <div className="mx-auto w-12 h-12 rounded-2xl bg-neutral-800 flex items-center justify-center text-neutral-300">

@@ -24,6 +24,7 @@ create table if not exists quizzes (
   encoded_url text not null,
   result_url  text,
   is_stealth_mode boolean not null default false,
+  is_active   boolean not null default true,
   created_at  timestamptz not null default now()
 );
 
@@ -33,6 +34,9 @@ alter table quizzes add column if not exists result_url text;
 
 -- Stealth mode (hide violations from participants, logged secretly for admin)
 alter table quizzes add column if not exists is_stealth_mode boolean not null default false;
+
+-- Active status (when false, quiz is locked and inaccessible outside scheduled hours)
+alter table quizzes add column if not exists is_active boolean not null default true;
 
 create index if not exists quizzes_admin_id_created_at_idx
   on quizzes (admin_id, created_at);

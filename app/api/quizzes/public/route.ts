@@ -25,6 +25,7 @@ export async function GET(request: Request) {
       title: quiz.title,
       formUrl: quiz.formUrl,
       isStealthMode: quiz.isStealthMode ?? false,
+      isActive: quiz.isActive ?? true,
     });
   } catch (error) {
     console.error("[api/quizzes/public] error:", error);

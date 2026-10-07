@@ -34,6 +34,7 @@ type QuizDetailProps = {
   onRequestDeleteSubmission: (submission: Submission) => void;
   onUpdateResultUrl?: (quizId: string, resultUrl: string) => Promise<boolean>;
   onUpdateStealthMode?: (quizId: string, isStealthMode: boolean) => Promise<boolean>;
+  onUpdateQuizActive?: (quizId: string, isActive: boolean) => Promise<boolean>;
   onUpdateQuiz?: (
     quizId: string,
     updates: { title: string; formUrl: string; resultUrl?: string }
@@ -81,6 +82,7 @@ export function QuizDetail({
   onCopy,
   onRequestDeleteSubmission,
   onUpdateStealthMode,
+  onUpdateQuizActive,
   onUpdateQuiz,
 }: QuizDetailProps) {
   const { t } = useLanguage();
@@ -89,10 +91,27 @@ export function QuizDetail({
 
   const [optimisticStealth, setOptimisticStealth] = React.useState<boolean | null>(null);
   const [updatingStealth, setUpdatingStealth] = React.useState(false);
+  const [optimisticActive, setOptimisticActive] = React.useState<boolean | null>(null);
+  const [updatingActive, setUpdatingActive] = React.useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("access");
 
   const isStealth = optimisticStealth ?? (quiz.isStealthMode ?? false);
+  const isActive = optimisticActive ?? (quiz.isActive ?? true);
+
+  async function handleToggleActive(checked: boolean) {
+    if (!onUpdateQuizActive || updatingActive) return;
+    setUpdatingActive(true);
+    setOptimisticActive(checked);
+    const success = await onUpdateQuizActive(quiz.id, checked);
+    setOptimisticActive(null);
+    if (!success) {
+      toast.error(t.toastNetworkError);
+    } else {
+      toast.success(t.toastQuizStatusUpdated);
+    }
+    setUpdatingActive(false);
+  }
 
   async function handleToggleStealth(checked: boolean) {
     if (!onUpdateStealthMode || updatingStealth) return;
@@ -145,9 +164,25 @@ export function QuizDetail({
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1.5">
-            <p className="font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-muted-foreground">
-              {t.selectedQuiz}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-mono text-[0.6875rem] uppercase tracking-[0.16em] text-muted-foreground">
+                {t.selectedQuiz}
+              </p>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-sans text-xs font-semibold ${
+                  isActive
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-destructive/10 text-destructive"
+                }`}
+              >
+                <span
+                  className={`size-1.5 rounded-full ${
+                    isActive ? "bg-emerald-500 animate-pulse" : "bg-destructive"
+                  }`}
+                />
+                {isActive ? t.quizStatusActive : t.quizStatusInactive}
+              </span>
+            </div>
             <h2 className="font-display text-2xl leading-tight tracking-[-0.02em] sm:text-3xl">
               {quiz.title}
             </h2>
@@ -241,42 +276,83 @@ export function QuizDetail({
             </TabsTrigger>
           </TabsList>
 
-          {/* Stealth Mode (Mode Sembunyi) Toggle di sebelah kanan sejajar tab */}
-          <div className="flex items-center gap-2.5 rounded-lg border border-border/80 bg-muted/40 px-3 h-10 select-none">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-foreground">
-                {t.stealthModeLabel}
-              </span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    className="inline-flex size-4 items-center justify-center text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
-                    aria-label={t.stealthModeToggleDesc}
-                  >
-                    <HelpCircleIcon className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-[280px] text-center text-xs">
-                  {t.stealthModeToggleDesc}
-                </TooltipContent>
-              </Tooltip>
+          {/* Action toggles: Status Sesi & Stealth Mode */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status Sesi Aktif/Nonaktif Toggle */}
+            <div className="flex items-center gap-2.5 rounded-lg border border-border/80 bg-muted/40 px-3 h-10 select-none">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-foreground">
+                  {t.toggleQuizActive}
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex size-4 items-center justify-center text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
+                      aria-label={t.toggleQuizActiveSub}
+                    >
+                      <HelpCircleIcon className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[280px] text-center text-xs">
+                    {t.toggleQuizActiveSub}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              <label
+                htmlFor={`toggle-active-${quiz.id}`}
+                className="relative inline-flex cursor-pointer items-center"
+              >
+                <input
+                  id={`toggle-active-${quiz.id}`}
+                  type="checkbox"
+                  checked={isActive}
+                  disabled={updatingActive}
+                  onChange={(e) => void handleToggleActive(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:bg-emerald-600 peer-checked:after:translate-x-full peer-focus:outline-none" />
+              </label>
             </div>
 
-            <label
-              htmlFor={`toggle-stealth-${quiz.id}`}
-              className="relative inline-flex cursor-pointer items-center"
-            >
-              <input
-                id={`toggle-stealth-${quiz.id}`}
-                type="checkbox"
-                checked={isStealth}
-                disabled={updatingStealth}
-                onChange={(e) => void handleToggleStealth(e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:bg-amber-600 peer-checked:after:translate-x-full peer-focus:outline-none" />
-            </label>
+            {/* Stealth Mode (Mode Sembunyi) Toggle */}
+            <div className="flex items-center gap-2.5 rounded-lg border border-border/80 bg-muted/40 px-3 h-10 select-none">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-medium text-foreground">
+                  {t.stealthModeLabel}
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="inline-flex size-4 items-center justify-center text-muted-foreground hover:text-foreground focus:outline-none transition-colors"
+                      aria-label={t.stealthModeToggleDesc}
+                    >
+                      <HelpCircleIcon className="size-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[280px] text-center text-xs">
+                    {t.stealthModeToggleDesc}
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+
+              <label
+                htmlFor={`toggle-stealth-${quiz.id}`}
+                className="relative inline-flex cursor-pointer items-center"
+              >
+                <input
+                  id={`toggle-stealth-${quiz.id}`}
+                  type="checkbox"
+                  checked={isStealth}
+                  disabled={updatingStealth}
+                  onChange={(e) => void handleToggleStealth(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="h-5 w-9 rounded-full bg-muted-foreground/30 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-card after:transition-all after:content-[''] peer-checked:bg-amber-600 peer-checked:after:translate-x-full peer-focus:outline-none" />
+              </label>
+            </div>
           </div>
         </div>
 
@@ -389,6 +465,15 @@ export function QuizDetail({
                     <span>{t.editQuiz}</span>
                   </Button>
                 </div>
+              </div>
+            </div>
+
+            {/* Google Forms / Account Login Tip Banner */}
+            <div className="flex items-start gap-3 rounded-lg border border-border/70 bg-card p-4 text-xs text-muted-foreground shadow-xs">
+              <HelpCircleIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="space-y-1 leading-relaxed">
+                <span className="font-semibold text-foreground">Informasi Formulir & Login Akun</span>
+                <p>{t.googleFormTip}</p>
               </div>
             </div>
           </div>

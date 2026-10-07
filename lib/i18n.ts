@@ -282,6 +282,17 @@ const id = {
   editQuizDialogDesc: "Perbarui judul kuis atau URL formulir Google Forms / Microsoft Forms.",
   quizUpdated: "Data kuis berhasil diperbarui.",
   quizUpdateFailed: "Gagal memperbarui data kuis.",
+  quizStatusActive: "Sesi Aktif",
+  quizStatusInactive: "Sesi Nonaktif",
+  toggleQuizActive: "Status Sesi Kuis",
+  toggleQuizActiveSub: "Saat dinonaktifkan, peserta tidak dapat membuka formulir atau memulai ujian.",
+  quizInactiveTitle: "Sesi Kuis Sedang Dinonaktifkan",
+  quizInactiveDesc: "Sesi ujian ini sedang ditutup atau belum diaktifkan oleh pengawas. Silakan hubungi pengajar atau pengawas Anda.",
+  checkQuizStatus: "Cek Status Kuis",
+  googleFormTip: "Tips Pengaturan Google Form: Agar tidak muncul pop-up konfirmasi browser ('Alamat email Anda akan dicatat...'), buka Google Form Anda > Setelan (Settings) > Jawaban (Responses) > ubah 'Kumpulkan alamat email' menjadi 'Jangan kumpulkan', dan pastikan 'Batasi ke 1 tanggapan' dinonaktifkan. Karena Secure Quiz Wrapper sudah otomatis mencatat identitas & membatasi peserta ujian.",
+  toastQuizStatusUpdated: "Status sesi kuis berhasil diperbarui.",
+  ruleGoogleAccountTitle: "Login Akun Google / Microsoft Terlebih Dahulu",
+  ruleGoogleAccountSub: "Jika kuis mewajibkan login, pastikan Anda sudah login ke akun Google/Microsoft di browser ini sebelum menekan 'Mulai Ujian'.",
 } as const;
 
 const en: Record<keyof typeof id, string> = {
@@ -561,6 +572,17 @@ const en: Record<keyof typeof id, string> = {
   editQuizDialogDesc: "Update assessment title or target form URL (Google Forms / Microsoft Forms).",
   quizUpdated: "Assessment updated successfully.",
   quizUpdateFailed: "Failed to update assessment.",
+  quizStatusActive: "Active Session",
+  quizStatusInactive: "Inactive Session",
+  toggleQuizActive: "Quiz Session Status",
+  toggleQuizActiveSub: "When disabled, participants cannot open the form or begin the assessment.",
+  quizInactiveTitle: "Assessment Session Is Inactive",
+  quizInactiveDesc: "This assessment session is closed or has not yet been activated by the proctor. Please contact your instructor.",
+  checkQuizStatus: "Check Assessment Status",
+  googleFormTip: "Google Forms Tip: To prevent the browser confirmation pop-up ('Your email address will be recorded...'), open your Google Form > Settings > Responses > set 'Collect email addresses' to 'Do not collect', and ensure 'Limit to 1 response' is toggled off. Secure Quiz Wrapper already manages identity and locks sessions automatically.",
+  toastQuizStatusUpdated: "Quiz session status updated successfully.",
+  ruleGoogleAccountTitle: "Sign In to Google / Microsoft First",
+  ruleGoogleAccountSub: "If this assessment requires signing in, make sure you are signed in on this browser before clicking 'Start Assessment'.",
 };
 
 export type Translation = Record<keyof typeof id, string>;

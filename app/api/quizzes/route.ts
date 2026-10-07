@@ -6,6 +6,7 @@ import {
   createQuiz,
   updateQuizResultUrl,
   updateQuizStealthMode,
+  updateQuizActive,
   updateQuiz,
   deleteQuiz,
 } from "@/lib/db";
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
       encodedUrl,
       resultUrl: trimmedResult || null,
       isStealthMode: typeof isStealthMode === "boolean" ? isStealthMode : false,
+      isActive: true,
       createdAt: new Date().toISOString(),
     };
 
@@ -95,7 +97,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { quizId, resultUrl, isStealthMode, title, formUrl } = body;
+    const { quizId, resultUrl, isStealthMode, isActive, title, formUrl } = body;
 
     if (!quizId) {
       return NextResponse.json(
@@ -142,6 +144,16 @@ export async function PATCH(request: Request) {
 
     if (typeof isStealthMode === "boolean") {
       updated = await updateQuizStealthMode(quizId, admin.id, isStealthMode);
+      if (!updated) {
+        return NextResponse.json(
+          { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },
+          { status: 404 }
+        );
+      }
+    }
+
+    if (typeof isActive === "boolean") {
+      updated = await updateQuizActive(quizId, admin.id, isActive);
       if (!updated) {
         return NextResponse.json(
           { error: "Kuis tidak ditemukan atau Anda tidak berhak mengubahnya." },

@@ -16,6 +16,8 @@ export interface Quiz {
   resultUrl: string | null;
   /** When true, hides violation warnings and counts from participants (logged secretly for admin). */
   isStealthMode: boolean;
+  /** When true, quiz is active and accessible by participants. When false, shows inactive notice. */
+  isActive: boolean;
   createdAt: string;
 }
 

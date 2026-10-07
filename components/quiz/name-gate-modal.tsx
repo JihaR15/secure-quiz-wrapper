@@ -48,6 +48,11 @@ const RULES = [
     titleKey: "ruleFullscreenTitle" as const,
     bodyKey: "ruleFullscreenSub" as const,
   },
+  {
+    icon: <Globe02Icon className="size-4 text-blue-500" />,
+    titleKey: "ruleGoogleAccountTitle" as const,
+    bodyKey: "ruleGoogleAccountSub" as const,
+  },
 ];
 
 export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
@@ -77,9 +82,9 @@ export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
     <Dialog open={isOpen}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-md gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-md"
+        className="max-w-md w-[calc(100vw-2rem)] max-h-[92vh] flex flex-col gap-0 overflow-hidden border-border bg-card p-0 sm:max-w-lg"
       >
-        <DialogHeader className="space-y-5 px-6 pt-7 pb-0 text-left sm:px-7">
+        <DialogHeader className="shrink-0 space-y-4 px-5 pt-6 pb-2 text-left sm:space-y-5 sm:px-7 sm:pt-7 sm:pb-0">
           <div className="flex items-center justify-between">
             <Logo className="h-6" priority />
             <button
@@ -91,17 +96,17 @@ export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
               <span>{language.toUpperCase()}</span>
             </button>
           </div>
-          <div className="space-y-1.5">
-            <DialogTitle className="font-display text-2xl font-medium tracking-[-0.02em]">
+          <div className="space-y-1">
+            <DialogTitle className="font-display text-xl sm:text-2xl font-medium tracking-[-0.02em]">
               {step === "name" ? t.quizGateTitle : t.quizGateRulesTitle}
             </DialogTitle>
-            <DialogDescription className="text-pretty text-sm leading-relaxed">
+            <DialogDescription className="text-pretty text-xs sm:text-sm leading-relaxed">
               {step === "name" ? t.quizGateSub : t.quizGateRulesSub}
             </DialogDescription>
           </div>
         </DialogHeader>
 
-        <div className="px-6 pt-6 pb-7 sm:px-7">
+        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
           {step === "name" ? (
             <form onSubmit={handleNext} noValidate className="space-y-5">
               <div className="space-y-2">
@@ -140,17 +145,17 @@ export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
             </form>
           ) : (
             <div className="space-y-5">
-              <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border">
+              <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-muted/20">
                 {RULES.map((rule) => (
-                  <li key={rule.titleKey} className="flex gap-3 p-4">
+                  <li key={rule.titleKey} className="flex gap-3 p-3.5 sm:p-4">
                     <span aria-hidden className="mt-0.5 shrink-0">
                       {rule.icon}
                     </span>
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium tracking-[-0.01em]">
+                    <div className="space-y-0.5 sm:space-y-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-medium tracking-[-0.01em]">
                         {t[rule.titleKey]}
                       </p>
-                      <p className="text-pretty text-xs leading-relaxed text-muted-foreground">
+                      <p className="text-pretty text-[11px] sm:text-xs leading-relaxed text-muted-foreground">
                         {t[rule.bodyKey]}
                       </p>
                     </div>
@@ -158,7 +163,7 @@ export function NameGateModal({ isOpen, onSubmit }: NameGateModalProps) {
                 ))}
               </ul>
 
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1">
                 <Button onClick={handleStart} className="h-10 w-full gap-2">
                   {t.startQuiz}
                   <ArrowRight01Icon className="size-4" />
