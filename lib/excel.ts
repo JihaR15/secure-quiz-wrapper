@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import { Submission } from "@/lib/db";
-import { formatDuration } from "@/lib/quiz-format";
+import { formatDate, formatDuration } from "@/lib/quiz-format";
 
 export function generateExcelReport(
   quizTitle: string,
@@ -18,6 +18,7 @@ export function generateExcelReport(
     return {
       "No.": index + 1,
       "Nama Peserta": sub.participantName,
+      "Tanggal": formatDate(sub.startedAt, "id-ID"),
       "Jumlah Pelanggaran": sub.violationCount,
       "Pindah Tab": breakdown.tab ?? 0,
       "Pindah Window": breakdown.window ?? 0,
@@ -34,6 +35,7 @@ export function generateExcelReport(
   worksheet["!cols"] = [
     { wch: 6 },  // No.
     { wch: 30 }, // Nama Peserta
+    { wch: 15 }, // Tanggal
     { wch: 20 }, // Jumlah Pelanggaran
     { wch: 12 }, // Pindah Tab
     { wch: 14 }, // Pindah Window
@@ -44,7 +46,7 @@ export function generateExcelReport(
   ];
 
   // Set AutoFilter on header columns
-  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:I1");
+  const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1:J1");
   worksheet["!autofilter"] = { ref: XLSX.utils.encode_range(range) };
 
   const workbook = XLSX.utils.book_new();
