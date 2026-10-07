@@ -26,7 +26,7 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero: copy anchored bottom-left, animation owning the right side. */}
-        <section className="relative flex min-h-[calc(100svh-4rem)] flex-col justify-end">
+        <section id="hero" className="relative flex min-h-svh flex-col justify-end">
           <div
             aria-hidden
             className="absolute inset-0 lg:inset-y-0 lg:left-[46%] lg:right-0"
@@ -42,7 +42,7 @@ export default function LandingPage() {
             className="hairline-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(90%_70%_at_20%_80%,#000,transparent_75%)]"
           />
 
-          <div className="relative z-10 flex w-full flex-1 flex-col justify-end px-6 pb-8 pt-12 sm:px-10 md:px-12 lg:px-16 xl:px-20 sm:pb-10 lg:pb-12">
+          <div className="relative z-10 flex w-full flex-1 flex-col justify-end px-6 pb-8 pt-20 sm:px-10 md:px-12 lg:px-16 xl:px-20 sm:pb-10 sm:pt-24 lg:pb-12">
             <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
               <div className="max-w-[54rem] space-y-6 lg:space-y-7">
                 <div className="flex items-center gap-3">
