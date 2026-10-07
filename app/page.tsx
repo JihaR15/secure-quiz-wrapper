@@ -10,6 +10,7 @@ import { BentoGrid } from "@/components/site/bento-grid";
 import { HowItWorks } from "@/components/site/how-it-works";
 import DriftWall, { type DriftWallItem } from "@/components/react-bits/drift-wall";
 import TechText from "@/components/react-bits/tech-text";
+import { Preloader } from "@/components/site/preloader";
 import { useLanguage, useTheme } from "@/components/providers";
 
 // Foto-foto drift wall di landing page (campuran foto lokal dan Unsplash):
@@ -75,6 +76,7 @@ export default function LandingPage() {
 
   return (
     <div className="relative flex min-h-svh flex-col overflow-x-clip bg-background">
+      <Preloader />
       <SiteHeader cta={{ href: "/admin", label: copy.heroPrimaryCta }} />
 
       <main className="flex-1">
