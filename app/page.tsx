@@ -3,14 +3,66 @@
 import Link from "next/link";
 import { ArrowDown01Icon, ArrowRight01Icon } from "hugeicons-react";
 import { Button } from "@/components/ui/button";
-import { SilkBackground } from "@/components/react-bits/silk-background";
 import { ScrollCue } from "@/components/site/scroll-cue";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { BentoGrid } from "@/components/site/bento-grid";
 import { HowItWorks } from "@/components/site/how-it-works";
+import DriftWall, { type DriftWallItem } from "@/components/react-bits/drift-wall";
 import TechText from "@/components/react-bits/tech-text";
 import { useLanguage, useTheme } from "@/components/providers";
+
+// Foto-foto drift wall di landing page (campuran foto lokal dan Unsplash):
+const HERO_DRIFT_ITEMS: DriftWallItem[] = [
+  {
+    image: "/images/drift/IMG_20261005_091916.webp",
+    title: "Sesi Ujian Berlangsung",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&auto=format&fit=crop&q=80",
+    title: "Evaluasi Digital",
+  },
+  {
+    image: "/images/drift/IMG_20261006_090420.webp",
+    title: "Aktivitas Peserta Ujian",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=600&auto=format&fit=crop&q=80",
+    title: "Analitik Penilaian",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1488190211105-8b0e65b80b4e?w=600&auto=format&fit=crop&q=80",
+    title: "Formulir Ujian",
+  },
+  {
+    image: "/images/drift/IMG_20261006_090437.webp",
+    title: "Ruang Kelas Terpantau",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80",
+    title: "Pengawasan Terpusat",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&auto=format&fit=crop&q=80",
+    title: "Integritas Asesmen",
+  },
+  {
+    image: "/images/drift/IMG_20261006_090457.webp",
+    title: "Pemeriksaan & Monitoring",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?w=600&auto=format&fit=crop&q=80",
+    title: "Pembelajaran Aman",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&auto=format&fit=crop&q=80",
+    title: "Laporan Pelanggaran",
+  },
+  {
+    image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600&auto=format&fit=crop&q=80",
+    title: "Pantauan Fokus",
+  },
+];
 
 export default function LandingPage() {
   const { t, language } = useLanguage();
@@ -19,30 +71,56 @@ export default function LandingPage() {
 
   const techTextColor = theme === "dark" ? "#10b981" : "#059669";
   const techAccentColor = theme === "dark" ? "#34d399" : "#047857";
+  const driftOverlayColor = theme === "dark" ? "#131312" : "#faf9f7";
 
   return (
     <div className="relative flex min-h-svh flex-col overflow-x-clip bg-background">
       <SiteHeader cta={{ href: "/admin", label: copy.heroPrimaryCta }} />
 
       <main className="flex-1">
-        {/* Hero: copy anchored bottom-left, animation owning the right side. */}
+        {/* Hero: copy anchored bottom-left, DriftWall on the right (desktop) or top (mobile) */}
         <section id="hero" className="relative flex min-h-svh flex-col justify-end">
+          {/* DriftWall di desktop (disebelah kanan dengan gradasi smooth) */}
           <div
-            aria-hidden
-            className="absolute inset-0 lg:inset-y-0 lg:left-[46%] lg:right-0"
+            className="pointer-events-auto hidden overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:left-[44%] lg:block xl:left-[46%]"
           >
-            <div className="absolute inset-0 opacity-90 [mask-image:radial-gradient(115%_85%_at_62%_42%,#000_38%,transparent_78%)] lg:[mask-image:linear-gradient(to_left,#000_52%,transparent_96%)]">
-              <SilkBackground className="size-full" />
-            </div>
+            {/* Gradasi halus sisi kiri, kanan, atas, dan bawah */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-48 bg-gradient-to-r from-background via-background/60 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-background to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-background to-transparent" />
+            <DriftWall
+              items={HERO_DRIFT_ITEMS}
+              columns={4}
+              tileWidth={195}
+              tileHeight={130}
+              gap={16}
+              overlayColor={driftOverlayColor}
+              className="size-full"
+            />
           </div>
 
           {/* Hairline lattice, fades out before it reaches the copy. */}
           <div
             aria-hidden
-            className="hairline-grid pointer-events-none absolute inset-0 opacity-60 [mask-image:radial-gradient(90%_70%_at_20%_80%,#000,transparent_75%)]"
+            className="hairline-grid pointer-events-none absolute inset-0 opacity-50 [mask-image:radial-gradient(90%_70%_at_20%_80%,#000,transparent_75%)]"
           />
 
           <div className="relative z-10 flex w-full flex-1 flex-col justify-end px-6 pb-8 pt-20 sm:px-10 md:px-12 lg:px-16 xl:px-20 sm:pb-10 sm:pt-24 lg:pb-12">
+            {/* DriftWall di mobile (di atas teks dengan gradasi smooth bawah) */}
+            <div className="relative -mx-6 -mt-4 mb-6 h-56 w-[calc(100%+3rem)] overflow-hidden sm:-mx-10 sm:h-72 sm:w-[calc(100%+5rem)] lg:hidden">
+              <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-transparent to-background" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b from-background/80 to-transparent" />
+              <DriftWall
+                items={HERO_DRIFT_ITEMS}
+                columns={3}
+                tileWidth={135}
+                tileHeight={90}
+                gap={12}
+                overlayColor={driftOverlayColor}
+                className="size-full"
+              />
+            </div>
             <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
               <div className="max-w-[54rem] space-y-6 lg:space-y-7">
                 <div className="flex items-center gap-3">
