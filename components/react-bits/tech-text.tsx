@@ -9,6 +9,8 @@ const FALLOFF_STEPS = 8;
 const SPRING = 320;
 const DAMPING = 22;
 
+const emptySubscribe = () => () => {};
+
 const approach = (current: number, target: number, dt: number, seconds: number) =>
   current + (target - current) * (1 - Math.exp(-dt / seconds));
 
@@ -130,8 +132,6 @@ const resolveFontFamily = (familyStr: string, element: HTMLElement | null): stri
   });
 };
 
-const emptySubscribe = () => () => {};
-
 export default function TechText({
   text = 'React Bits',
   fontFamily = '',
@@ -158,9 +158,11 @@ export default function TechText({
   style
 }: TechTextProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const localCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const screenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const settingsRef = useRef<InternalSettings | null>(null);
   const wakeRef = useRef<() => void>(() => {});
+
   const mounted = React.useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -195,15 +197,14 @@ export default function TechText({
   });
 
   useEffect(() => {
-    if (!mounted) return undefined;
     const container = containerRef.current;
-    const canvas = canvasRef.current;
-    if (!container || !canvas) return undefined;
+    const localCanvas = localCanvasRef.current;
+    if (!container || !localCanvas) return undefined;
 
-    const ctx = canvas.getContext('2d');
+    const localCtx = localCanvas.getContext('2d');
     const scratch = document.createElement('canvas');
     const scratchCtx = scratch.getContext('2d');
-    if (!ctx || !scratchCtx) return undefined;
+    if (!localCtx || !scratchCtx) return undefined;
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     let width = 1;
@@ -306,8 +307,7 @@ export default function TechText({
       let m = probe.measureText(s.text);
       const rawInkWidth = Math.max(m.actualBoundingBoxLeft + m.actualBoundingBoxRight, 1);
 
-      // Scale down only when text width exceeds container width (e.g. mobile screens)
-      // Do NOT clamp down by container height so the user gets a prominent display size
+      // Skala responsif hanya jika lebar teks melebihi lebar kontainer
       const fit = Math.min(1, (width * 0.98) / rawInkWidth);
       const size = Math.max(26, Math.round(s.fontSize * fit));
 
@@ -420,19 +420,19 @@ export default function TechText({
       );
     };
 
-    const drawReveal = (s: InternalSettings, originX: number, originY: number) => {
+    const drawReveal = (targetCtx: CanvasRenderingContext2D, s: InternalSettings, canvasW: number, canvasH: number) => {
       const radius = s.reach * dpr;
-      const cx = (lens.x + originX) * dpr;
-      const cy = (lens.y + originY) * dpr;
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = falloff(ctx, cx, cy, radius, presence, s.softness);
-      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
-      ctx.globalCompositeOperation = 'source-over';
+      const cx = lens.x * dpr;
+      const cy = lens.y * dpr;
+      targetCtx.globalCompositeOperation = 'destination-out';
+      targetCtx.fillStyle = falloff(targetCtx, cx, cy, radius, presence, s.softness);
+      targetCtx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+      targetCtx.globalCompositeOperation = 'source-over';
 
       const x0 = Math.max(0, Math.floor(cx - radius));
       const y0 = Math.max(0, Math.floor(cy - radius));
-      const x1 = Math.min(canvas.width, Math.ceil(cx + radius));
-      const y1 = Math.min(canvas.height, Math.ceil(cy + radius));
+      const x1 = Math.min(canvasW, Math.ceil(cx + radius));
+      const y1 = Math.min(canvasH, Math.ceil(cy + radius));
       if (x1 <= x0 || y1 <= y0) return;
       const w = x1 - x0;
       const h = y1 - y0;
@@ -444,15 +444,15 @@ export default function TechText({
       scratchCtx.globalCompositeOperation = 'source-over';
       scratchCtx.clearRect(0, 0, w, h);
       for (const glyph of glyphs) {
-        blit(scratchCtx, glyph.dashes, glyph.offset.x + originX, glyph.offset.y + originY, x0, y0);
+        blit(scratchCtx, glyph.dashes, glyph.offset.x, glyph.offset.y, x0, y0);
       }
       scratchCtx.globalCompositeOperation = 'destination-in';
       scratchCtx.fillStyle = falloff(scratchCtx, cx - x0, cy - y0, radius, 1, s.softness);
       scratchCtx.fillRect(0, 0, w, h);
       scratchCtx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = presence;
-      ctx.drawImage(scratch, 0, 0, w, h, x0, y0, w, h);
-      ctx.globalAlpha = 1;
+      targetCtx.globalAlpha = presence;
+      targetCtx.drawImage(scratch, 0, 0, w, h, x0, y0, w, h);
+      targetCtx.globalAlpha = 1;
     };
 
     const crisp = (value: number) => (Math.round(value * dpr) + 0.5) / dpr;
@@ -476,7 +476,7 @@ export default function TechText({
       return [fx1, fy2 - d, -1, 0];
     };
 
-    const drawSpecks = (s: InternalSettings, a: number, fx1: number, fy1: number, fx2: number, fy2: number) => {
+    const drawSpecks = (targetCtx: CanvasRenderingContext2D, s: InternalSettings, a: number, fx1: number, fy1: number, fx2: number, fy2: number) => {
       const w = fx2 - fx1;
       const h = fy2 - fy1;
       if (w < 2 || h < 2) return;
@@ -503,15 +503,15 @@ export default function TechText({
         const left = Math.round(x - size / 2);
         const top = Math.round(y - size / 2);
         if (tone < 0.26 || (large && tone < 0.78)) {
-          ctx.strokeStyle = rgba(s.accentColor, alpha);
-          ctx.strokeRect(left + 0.5, top + 0.5, size, size);
+          targetCtx.strokeStyle = rgba(s.accentColor, alpha);
+          targetCtx.strokeRect(left + 0.5, top + 0.5, size, size);
           if (large && tone > 0.5) {
-            ctx.fillStyle = rgba(s.accentColor, alpha);
-            ctx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
+            targetCtx.fillStyle = rgba(s.accentColor, alpha);
+            targetCtx.fillRect(Math.round(x) - 1, Math.round(y) - 1, 2, 2);
           }
         } else {
-          ctx.fillStyle = rgba(s.accentColor, alpha);
-          ctx.fillRect(left, top, size, size);
+          targetCtx.fillStyle = rgba(s.accentColor, alpha);
+          targetCtx.fillRect(left, top, size, size);
         }
       }
 
@@ -520,13 +520,13 @@ export default function TechText({
         for (let i = 0; i < 4; i++) {
           const [x, y] = perimeterPoint(fx1, fy1, fx2, fy2, head - i * 6, w, h);
           const size = i === 0 ? 3 : 2;
-          ctx.fillStyle = rgba(s.accentColor, a * [0.95, 0.55, 0.32, 0.16][i]);
-          ctx.fillRect(Math.round(x - size / 2), Math.round(y - size / 2), size, size);
+          targetCtx.fillStyle = rgba(s.accentColor, a * [0.95, 0.55, 0.32, 0.16][i]);
+          targetCtx.fillRect(Math.round(x - size / 2), Math.round(y - size / 2), size, size);
         }
       }
     };
 
-    const drawFrame = (s: InternalSettings, originX: number, originY: number) => {
+    const drawFrame = (targetCtx: CanvasRenderingContext2D, s: InternalSettings, originX: number, originY: number) => {
       const glyph = glyphs[frame.index];
       if (!glyph || frame.alpha < 0.01) return;
       const a = frame.alpha;
@@ -534,72 +534,65 @@ export default function TechText({
       const fy1 = crisp(frame.y1 + originY);
       const fx2 = crisp(frame.x2 + originX);
       const fy2 = crisp(frame.y2 + originY);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      targetCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       const moved = Math.hypot(glyph.offset.x, glyph.offset.y);
       if (moved > 1) {
         const hx = (glyph.box.x1 + glyph.box.x2) / 2 + originX;
         const hy = (glyph.box.y1 + glyph.box.y2) / 2 + originY;
-        ctx.beginPath();
-        ctx.moveTo(hx, hy);
-        ctx.lineTo(hx + glyph.offset.x, hy + glyph.offset.y);
-        ctx.setLineDash([3, 4]);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = rgba(s.accentColor, 0.45 * a);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.rect(Math.round(hx) - 2, Math.round(hy) - 2, 4, 4);
-        ctx.fillStyle = rgba(s.accentColor, 0.7 * a);
-        ctx.fill();
+        targetCtx.beginPath();
+        targetCtx.moveTo(hx, hy);
+        targetCtx.lineTo(hx + glyph.offset.x, hy + glyph.offset.y);
+        targetCtx.setLineDash([3, 4]);
+        targetCtx.lineWidth = 1;
+        targetCtx.strokeStyle = rgba(s.accentColor, 0.45 * a);
+        targetCtx.stroke();
+        targetCtx.setLineDash([]);
+        targetCtx.beginPath();
+        targetCtx.rect(Math.round(hx) - 2, Math.round(hy) - 2, 4, 4);
+        targetCtx.fillStyle = rgba(s.accentColor, 0.7 * a);
+        targetCtx.fill();
       }
 
-      ctx.beginPath();
-      ctx.rect(fx1, fy1, fx2 - fx1, fy2 - fy1);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = rgba(s.accentColor, 0.5 * a);
-      ctx.stroke();
+      targetCtx.beginPath();
+      targetCtx.rect(fx1, fy1, fx2 - fx1, fy2 - fy1);
+      targetCtx.lineWidth = 1;
+      targetCtx.strokeStyle = rgba(s.accentColor, 0.5 * a);
+      targetCtx.stroke();
 
-      ctx.beginPath();
+      targetCtx.beginPath();
       for (const [cx, cy] of [
         [fx1, fy1],
         [fx2, fy1],
         [fx2, fy2],
         [fx1, fy2]
       ]) {
-        ctx.rect(Math.round(cx) - 2, Math.round(cy) - 2, 5, 5);
+        targetCtx.rect(Math.round(cx) - 2, Math.round(cy) - 2, 5, 5);
       }
-      ctx.fillStyle = rgba(s.accentColor, 0.95 * a);
-      ctx.fill();
+      targetCtx.fillStyle = rgba(s.accentColor, 0.95 * a);
+      targetCtx.fill();
 
       if (s.specks > 0) {
-        ctx.lineWidth = 1;
-        drawSpecks(s, a, fx1, fy1, fx2, fy2);
+        targetCtx.lineWidth = 1;
+        drawSpecks(targetCtx, s, a, fx1, fy1, fx2, fy2);
       }
 
       if (!s.labels) return;
-      ctx.font = LABEL_FONT;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'bottom';
-      ctx.fillStyle = rgba(s.accentColor, 0.62 * a);
+      targetCtx.font = LABEL_FONT;
+      targetCtx.textAlign = 'left';
+      targetCtx.textBaseline = 'bottom';
+      targetCtx.fillStyle = rgba(s.accentColor, 0.62 * a);
       const label =
         moved > 1
           ? `${signed(Math.round(glyph.offset.x))}, ${signed(Math.round(-glyph.offset.y))}`
           : `${glyph.char}  ${Math.round(glyph.box.x2 - glyph.box.x1)} × ${Math.round(glyph.box.y2 - glyph.box.y1)}`;
-      ctx.fillText(label, Math.round(fx1), Math.round(fy1) - 7);
+      targetCtx.fillText(label, Math.round(fx1), Math.round(fy1) - 7);
     };
 
     const tick = (now: number) => {
       raf = 0;
       const s = settingsRef.current;
       if (!s || !alive) return;
-
-      const rect = container.getBoundingClientRect();
-      // If scrolled far out of view, sleep
-      if (rect.bottom < -200 || rect.top > window.innerHeight + 200) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
 
       const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
@@ -685,36 +678,59 @@ export default function TechText({
         container.style.cursor = dragging >= 0 ? 'grabbing' : focus >= 0 && pointer.inside ? 'grab' : '';
       }
 
-      const originX = rect.left;
-      const originY = rect.top;
+      // Periksa apakah ada huruf yang sedang terbang/ditarik ke layar bebas
+      const flyingIndex = dragging >= 0 ? dragging : glyphs.findIndex(g => Math.hypot(g.offset.x, g.offset.y) > 0.5);
+      const screenCanvas = screenCanvasRef.current;
+      const screenCtx = screenCanvas?.getContext('2d');
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 1. Gambar pada LOCAL CANVAS (selalu terkunci di dalam kontainer DOM, diam di tempat saat di-scroll)
+      localCtx.setTransform(1, 0, 0, 1, 0, 0);
+      localCtx.globalCompositeOperation = 'source-over';
+      localCtx.clearRect(0, 0, localCanvas.width, localCanvas.height);
 
       for (const glyph of glyphs) {
-        const moved = Math.hypot(glyph.offset.x, glyph.offset.y);
-        if (moved > 1) {
-          ctx.globalAlpha = Math.min(1, moved / 24) * 0.55;
-          blit(ctx, glyph.dashes, originX, originY, 0, 0);
-          ctx.globalAlpha = 1;
+        if (glyph.index === flyingIndex) {
+          // Huruf yang sedang terbang digambar bayangan garis putus-putusnya di posisi asal
+          localCtx.globalAlpha = 0.45;
+          blit(localCtx, glyph.dashes, 0, 0, 0, 0);
+          localCtx.globalAlpha = 1;
+          continue;
         }
-      }
-      for (const glyph of glyphs) {
-        const dx = glyph.offset.x + originX;
-        const dy = glyph.offset.y + originY;
         if (glyph.outline < 0.999) {
-          ctx.globalAlpha = 1 - glyph.outline;
-          blit(ctx, glyph.fill, dx, dy, 0, 0);
+          localCtx.globalAlpha = 1 - glyph.outline;
+          blit(localCtx, glyph.fill, glyph.offset.x, glyph.offset.y, 0, 0);
         }
         if (glyph.outline > 0.001) {
-          ctx.globalAlpha = glyph.outline;
-          blit(ctx, glyph.dashes, dx, dy, 0, 0);
+          localCtx.globalAlpha = glyph.outline;
+          blit(localCtx, glyph.dashes, glyph.offset.x, glyph.offset.y, 0, 0);
         }
-        ctx.globalAlpha = 1;
+        localCtx.globalAlpha = 1;
       }
-      if (presence > 0.001) drawReveal(s, originX, originY);
-      drawFrame(s, originX, originY);
+      if (presence > 0.001 && flyingIndex < 0) drawReveal(localCtx, s, localCanvas.width, localCanvas.height);
+      if (flyingIndex < 0) drawFrame(localCtx, s, 0, 0);
+
+      // 2. Jika ada huruf yang ditarik/terbang, gambar huruf tersebut di SCREEN CANVAS (bebas ke satu layar penuh)
+      if (screenCanvas && screenCtx) {
+        screenCtx.setTransform(1, 0, 0, 1, 0, 0);
+        screenCtx.globalCompositeOperation = 'source-over';
+        screenCtx.clearRect(0, 0, screenCanvas.width, screenCanvas.height);
+
+        if (flyingIndex >= 0) {
+          const rect = container.getBoundingClientRect();
+          const targetGlyph = glyphs[flyingIndex];
+          const originX = rect.left;
+          const originY = rect.top;
+
+          // Gambar huruf melayang di koordinat viewport satu layar penuh
+          const dx = targetGlyph.offset.x + originX;
+          const dy = targetGlyph.offset.y + originY;
+          screenCtx.globalAlpha = 1;
+          blit(screenCtx, targetGlyph.fill, dx, dy, 0, 0);
+
+          // Gambar garis konektor dan label frame di viewport layar
+          drawFrame(screenCtx, s, originX, originY);
+        }
+      }
 
       const settling =
         moving ||
@@ -734,8 +750,16 @@ export default function TechText({
       width = Math.max(1, container.clientWidth);
       height = Math.max(1, container.clientHeight);
       dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.round(window.innerWidth * dpr);
-      canvas.height = Math.round(window.innerHeight * dpr);
+
+      localCanvas.width = Math.round(width * dpr);
+      localCanvas.height = Math.round(height * dpr);
+
+      const screenCanvas = screenCanvasRef.current;
+      if (screenCanvas) {
+        screenCanvas.width = Math.round(window.innerWidth * dpr);
+        screenCanvas.height = Math.round(window.innerHeight * dpr);
+      }
+
       layoutKey = '';
       wake();
     };
@@ -799,15 +823,10 @@ export default function TechText({
       wake();
     };
 
-    const onScroll = () => {
-      wake();
-    };
-
     container.addEventListener('pointermove', onMove, { passive: true });
     container.addEventListener('pointerenter', onMove, { passive: true });
     container.addEventListener('pointerdown', onDown);
     container.addEventListener('pointerleave', onLeave, { passive: true });
-    window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', resize, { passive: true });
 
     const resizeObserver = new ResizeObserver(resize);
@@ -833,17 +852,17 @@ export default function TechText({
       container.removeEventListener('pointerenter', onMove);
       container.removeEventListener('pointerdown', onDown);
       container.removeEventListener('pointerleave', onLeave);
-      window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', resize);
       window.removeEventListener('pointermove', onWindowDragMove);
       window.removeEventListener('pointerup', onWindowDragUp);
       window.removeEventListener('pointercancel', onWindowDragUp);
       document.body.style.cursor = '';
     };
-  }, [mounted]);
+  }, []);
 
   return (
     <>
+      {/* 1. Local Canvas: Terduduk kokoh di dalam aliran teks DOM, 100% diam saat scroll */}
       <div
         ref={containerRef}
         className={`tech-text ${className}`.trim()}
@@ -853,11 +872,17 @@ export default function TechText({
         aria-label={text}
       >
         <span className="sr-only">{text}</span>
+        <canvas ref={localCanvasRef} className="tech-text-local-canvas" />
       </div>
+
+      {/* 2. Full-Screen Portal Canvas: Aktif ketika huruf ditarik agar bisa digeser kemana saja satu layar */}
       {mounted &&
         typeof document !== 'undefined' &&
         createPortal(
-          <canvas ref={canvasRef} className="tech-text-screen-canvas" />,
+          <canvas
+            ref={screenCanvasRef}
+            className="pointer-events-none fixed inset-0 z-50 h-screen w-screen"
+          />,
           document.body
         )}
     </>

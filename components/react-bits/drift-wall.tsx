@@ -150,9 +150,11 @@ export default function DriftWall({
   const pointerDampedRef = useRef({ x: 0, y: 0 });
   const lastTsRef = useRef<number | null>(null);
 
+  const [containerWidth, setContainerWidth] = useState(600);
   const [containerHeight, setContainerHeight] = useState(600);
   const [activeId, setActiveId] = useState<string | null>(null);
   const activeIdRef = useRef<string | null>(null);
+
   const reduced = React.useSyncExternalStore(
     subscribeReducedMotion,
     getReducedMotionSnapshot,
@@ -169,7 +171,8 @@ export default function DriftWall({
     const unit = tileHeight + gap;
     return columnItems.map(col => {
       const copyHeight = Math.max(unit, col.length * unit);
-      const copies = Math.max(2, Math.ceil((containerHeight * 1.6) / copyHeight) + 1);
+      // Salinan cukup banyak untuk layar tinggi / vertikal
+      const copies = Math.max(3, Math.ceil((containerHeight * 2.2) / copyHeight) + 1);
       return { copyHeight, copies };
     });
   }, [columnItems, tileHeight, gap, containerHeight]);
@@ -177,7 +180,10 @@ export default function DriftWall({
   useIsomorphicLayoutEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver(([entry]) => {
-      setContainerHeight(entry?.contentRect.height || 600);
+      if (entry?.contentRect) {
+        setContainerWidth(entry.contentRect.width || 600);
+        setContainerHeight(entry.contentRect.height || 600);
+      }
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
@@ -196,16 +202,24 @@ export default function DriftWall({
     velocitiesRef.current = columnItems.map(() => 0);
   }, [columnMeta, columnItems]);
 
+  // Skala adaptif yang merespons layar tinggi / monitor vertikal / mode desktop di HP
+  const planeScale = useMemo(() => {
+    const hRatio = containerHeight / 620;
+    const wRatio = containerWidth / 540;
+    const fit = Math.max(hRatio, wRatio);
+    return Math.max(1.15, Math.min(2.1, fit * 1.18));
+  }, [containerHeight, containerWidth]);
+
   const applyPlaneTransform = useCallback(
     (px: number, py: number) => {
       const plane = planeRef.current;
       if (!plane) return;
       plane.style.transform =
-        `translate(-50%, -50%) scale(1.18) ` +
+        `translate(-50%, -50%) scale(${planeScale}) ` +
         `rotateX(${tilt + py}deg) rotateY(${turn + px}deg) rotateZ(${roll}deg) ` +
         `translateZ(${-depth}px)`;
     },
-    [tilt, turn, roll, depth]
+    [tilt, turn, roll, depth, planeScale]
   );
 
   useEffect(() => {

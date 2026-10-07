@@ -82,7 +82,7 @@ export default function LandingPage() {
         <section id="hero" className="relative flex min-h-svh flex-col justify-end">
           {/* DriftWall di desktop (disebelah kanan dengan gradasi smooth) */}
           <div
-            className="pointer-events-auto hidden overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:left-[44%] lg:block xl:left-[46%]"
+            className="pointer-events-auto hidden overflow-hidden lg:absolute lg:inset-y-0 lg:right-0 lg:left-[42%] lg:block xl:left-[44%]"
           >
             {/* Gradasi halus sisi kiri, kanan, atas, dan bawah */}
             <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-48 bg-gradient-to-r from-background via-background/60 to-transparent" />
@@ -92,9 +92,9 @@ export default function LandingPage() {
             <DriftWall
               items={HERO_DRIFT_ITEMS}
               columns={4}
-              tileWidth={195}
-              tileHeight={130}
-              gap={16}
+              tileWidth={210}
+              tileHeight={140}
+              gap={18}
               overlayColor={driftOverlayColor}
               className="size-full"
             />
@@ -107,16 +107,16 @@ export default function LandingPage() {
           />
 
           <div className="relative z-10 flex w-full flex-1 flex-col justify-end px-6 pb-8 pt-20 sm:px-10 md:px-12 lg:px-16 xl:px-20 sm:pb-10 sm:pt-24 lg:pb-12">
-            {/* DriftWall di mobile (di atas teks dengan gradasi smooth bawah) */}
-            <div className="relative -mx-6 -mt-4 mb-6 h-56 w-[calc(100%+3rem)] overflow-hidden sm:-mx-10 sm:h-72 sm:w-[calc(100%+5rem)] lg:hidden">
+            {/* DriftWall di mobile (di atas teks dengan gradasi smooth bawah, responsif pada layar vertikal) */}
+            <div className="relative -mx-6 -mt-4 mb-6 h-[clamp(17rem,38vh,30rem)] w-[calc(100%+3rem)] overflow-hidden sm:-mx-10 sm:h-[clamp(19rem,42vh,34rem)] sm:w-[calc(100%+5rem)] lg:hidden">
               <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-transparent via-transparent to-background" />
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-12 bg-gradient-to-b from-background/80 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-14 bg-gradient-to-b from-background/80 to-transparent" />
               <DriftWall
                 items={HERO_DRIFT_ITEMS}
                 columns={3}
-                tileWidth={135}
-                tileHeight={90}
-                gap={12}
+                tileWidth={160}
+                tileHeight={108}
+                gap={14}
                 overlayColor={driftOverlayColor}
                 className="size-full"
               />
@@ -136,7 +136,7 @@ export default function LandingPage() {
                   </span>
 
                   {/* Stylish interactive TechText from React Bits for "Google & MS Forms" */}
-                  <div className="relative my-0.5 h-14 w-full max-w-[46rem] sm:my-1 sm:h-18 md:h-22 lg:h-26">
+                  <div className="relative my-1 h-14 w-full max-w-[46rem] sm:my-1.5 sm:h-18 md:h-22 lg:h-26">
                     <TechText
                       text="Google & MS Forms"
                       fontFamily="var(--font-playfair), Georgia, serif"
